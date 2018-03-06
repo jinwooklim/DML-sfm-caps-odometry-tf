@@ -1,4 +1,4 @@
-#Using Odometry data
+# Using Odometry data
 ## Preparing training data
 ```bash
 python data/prepare_train_data.py --dataset_dir=/home/jwlim/hdd2/KITTI_odometry/ --dataset_name='kitti_odom' --seq_length=3 --img_width=416 --img_height=128 --num_threads=4
@@ -18,6 +18,8 @@ and visualize the training progress by opening [https://localhost:8888](https://
 
 
 
+---
+---
 ---
 # Using Raw data
 We need preprocess data folder 
