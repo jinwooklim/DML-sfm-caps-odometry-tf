@@ -4,6 +4,7 @@
 Train data (KITTI) : raw folder -> (campus, city, residential, road)
 	-> 2011_09_26, 2011_09_28 ...
 
+# python data/prepare_train_data.py --dataset_dir=/home/jwlim/hdd2/raw/ --dataset_name='kitti_raw_eigtn' --dump_root=/home/jwlim/hdd2/formatted/ --seq_length=3 --img_width=416 --img_height=128 --num_threads=4
 Preprocessed data : Train data(color image) + calib_cam_to_cam.txt
 	-> formatted data : (0000000001.jpg, 000000000_cam.txt) # cam.txt is intrinsic value
 	-> 000000000_cam.txt -> (fx, 0, cx, 0, fy, cy, 0, 0, 1)

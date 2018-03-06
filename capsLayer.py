@@ -46,7 +46,8 @@ class CapsLayer(object):
             if not self.with_routing:
                 # the PrimaryCaps layer, a convolutional layer
                 # input: [batch_size, 20, 20, 256]
-                assert input.get_shape() == [cfg.batch_size, 20, 20, 256]
+                print("Input : ", input.get_shape())
+                assert input.get_shape() == [cfg.batch_size, 32, 104, 32]
 
                 '''
                 # version 1, computational expensive
@@ -69,6 +70,9 @@ class CapsLayer(object):
                 # PrimaryCap convolution does a ReLU activation or not before
                 # squashing function, but experiment show that using ReLU get a
                 # higher test accuracy. So, which one to use will be your choice
+                #print(self.num_outputs * self.vec_len) # 256
+                #print(self.kernel_size) # 9
+                #print(self.stride) # 2
                 capsules = tf.contrib.layers.conv2d(input, self.num_outputs * self.vec_len,
                                                     self.kernel_size, self.stride, padding="VALID",
                                                     activation_fn=tf.nn.relu)
@@ -79,7 +83,8 @@ class CapsLayer(object):
 
                 # [batch_size, 1152, 8, 1]
                 capsules = squash(capsules)
-                assert capsules.get_shape() == [cfg.batch_size, 1152, 8, 1]
+                print("capsules : ", capsules.get_shape())
+                assert capsules.get_shape() == [cfg.batch_size, 18432, 8, 1]
                 return(capsules)
 
         if self.layer_type == 'FC':
@@ -94,7 +99,7 @@ class CapsLayer(object):
                     b_IJ = tf.constant(np.zeros([cfg.batch_size, input.shape[1].value, self.num_outputs, 1, 1], dtype=np.float32))
                     capsules = routing(self.input, b_IJ)
                     capsules = tf.squeeze(capsules, axis=1)
-
+            
             return(capsules)
 
 
@@ -113,9 +118,11 @@ def routing(input, b_IJ):
      '''
 
     # W: [1, num_caps_i, num_caps_j * len_v_j, len_u_j, 1]
-    W = tf.get_variable('Weight', shape=(1, 1152, 160, 8, 1), dtype=tf.float32,
+    #W = tf.get_variable('Weight', shape=(1, 1152, 160, 8, 1), dtype=tf.float32,
+    #                    initializer=tf.random_normal_initializer(stddev=cfg.stddev))
+    W = tf.get_variable('Weight', shape=(1, 18432, 16*cfg.num_of_class, 8, 1), dtype=tf.float32,
                         initializer=tf.random_normal_initializer(stddev=cfg.stddev))
-    biases = tf.get_variable('bias', shape=(1, 1, 10, 16, 1))
+    biases = tf.get_variable('bias', shape=(1, 1, cfg.num_of_class, 16, 1))
 
     # Eq.2, calc u_hat
     # Since tf.matmul is a time-consuming op,
@@ -123,13 +130,22 @@ def routing(input, b_IJ):
     # ops instead. Matmul [a, b] x [b, c] is equal to a series ops as
     # element-wise multiply [a*c, b] * [a*c, b], reduce_sum at axis=1 and
     # reshape to [a, c]
-    input = tf.tile(input, [1, 1, 160, 1, 1])
-    assert input.get_shape() == [cfg.batch_size, 1152, 160, 8, 1]
+    #input = tf.tile(input, [1, 1, 160, 1, 1])
+    input = tf.tile(input, [1, 1, 16*cfg.num_of_class, 1, 1])
+    assert input.get_shape() == [cfg.batch_size, 18432, 16*cfg.num_of_class, 8, 1]
 
     #u_hat = tf.reduce_sum(W * input, axis=3, keepdims=True)
+    #
+    # Error part
+    #
+    print("W*input : ", np.shape(W * input))
+    print("W: ", np.shape(W))
+    print("input : ", np.shape(input))
     u_hat = tf.reduce_sum(W * input, axis=3, keep_dims=True)
-    u_hat = tf.reshape(u_hat, shape=[-1, 1152, 10, 16, 1])
-    assert u_hat.get_shape() == [cfg.batch_size, 1152, 10, 16, 1]
+    #u_hat = tf.reshape(u_hat, shape=[-1, 1152, 10, 16, 1])
+    u_hat = tf.reshape(u_hat, shape=[-1, 18432, cfg.num_of_class, 16, 1])
+    #assert u_hat.get_shape() == [cfg.batch_size, 1152, 10, 16, 1]
+    assert u_hat.get_shape() == [cfg.batch_size, 18432, cfg.num_of_class, 16, 1]
 
     # In forward, u_hat_stopped = u_hat; in backward, no gradient passed back from u_hat_stopped to u_hat
     u_hat_stopped = tf.stop_gradient(u_hat, name='stop_gradient')
@@ -149,12 +165,14 @@ def routing(input, b_IJ):
                 s_J = tf.multiply(c_IJ, u_hat)
                 # then sum in the second dim, resulting in [batch_size, 1, 10, 16, 1]
                 s_J = reduce_sum(s_J, axis=1, keepdims=True) + biases
-                assert s_J.get_shape() == [cfg.batch_size, 1, 10, 16, 1]
+                #assert s_J.get_shape() == [cfg.batch_size, 1, 10, 16, 1]
+                assert s_J.get_shape() == [cfg.batch_size, 1, cfg.num_of_class, 16, 1]
 
                 # line 6:
                 # squash using Eq.1,
                 v_J = squash(s_J)
-                assert v_J.get_shape() == [cfg.batch_size, 1, 10, 16, 1]
+                #assert v_J.get_shape() == [cfg.batch_size, 1, 10, 16, 1]
+                assert v_J.get_shape() == [cfg.batch_size, 1, cfg.num_of_class, 16, 1]
             elif r_iter < cfg.iter_routing - 1:  # Inner iterations, do not apply backpropagation
                 s_J = tf.multiply(c_IJ, u_hat_stopped)
                 s_J = reduce_sum(s_J, axis=1, keepdims=True) + biases
@@ -164,9 +182,11 @@ def routing(input, b_IJ):
                 # reshape & tile v_j from [batch_size ,1, 10, 16, 1] to [batch_size, 1152, 10, 16, 1]
                 # then matmul in the last tow dim: [16, 1].T x [16, 1] => [1, 1], reduce mean in the
                 # batch_size dim, resulting in [1, 1152, 10, 1, 1]
-                v_J_tiled = tf.tile(v_J, [1, 1152, 1, 1, 1])
+                #v_J_tiled = tf.tile(v_J, [1, 1152, 1, 1, 1])
+                v_J_tiled = tf.tile(v_J, [1, 18432, 1, 1, 1])
                 u_produce_v = reduce_sum(u_hat_stopped * v_J_tiled, axis=3, keepdims=True)
-                assert u_produce_v.get_shape() == [cfg.batch_size, 1152, 10, 1, 1]
+                #assert u_produce_v.get_shape() == [cfg.batch_size, 1152, 10, 1, 1]
+                assert u_produce_v.get_shape() == [cfg.batch_size, 18432, cfg.num_of_class, 1, 1]
 
                 # b_IJ += tf.reduce_sum(u_produce_v, axis=0, keep_dims=True)
                 b_IJ += u_produce_v

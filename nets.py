@@ -4,7 +4,7 @@ import tensorflow.contrib.slim as slim
 from tensorflow.contrib.layers.python.layers import utils
 import numpy as np
 # Add Capsule network the end of Conv layer
-from capsLayer import CapsLayer
+from capsNet import CapsNet
 
 # Range of disparity/inverse depth values
 DISP_SCALING = 10
@@ -22,6 +22,7 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
     H = inputs.get_shape()[1].value
     W = inputs.get_shape()[2].value
     num_source = int(src_image_stack.get_shape()[3].value//3)
+    print("num_source : ", num_source)
     with tf.variable_scope('pose_exp_net') as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
         with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
@@ -30,57 +31,36 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
                             activation_fn=tf.nn.relu,
                             outputs_collections=end_points_collection):
             # cnv1 to cnv5b are shared between pose and explainability prediction
+            #print("input_shape : ", np.shape(inputs)) # (4, 128, 416, 9)
             cnv1  = slim.conv2d(inputs,16,  [7, 7], stride=2, scope='cnv1')
+            #print("cnv1_shape : ", np.shape(cnv1)) # (4, 64, 208, 16)
             cnv2  = slim.conv2d(cnv1, 32,  [5, 5], stride=2, scope='cnv2')
-            cnv3  = slim.conv2d(cnv2, 64,  [3, 3], stride=2, scope='cnv3')
-            cnv4  = slim.conv2d(cnv3, 128, [3, 3], stride=2, scope='cnv4')
-            cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
+            #cnv3  = slim.conv2d(cnv2, 64,  [3, 3], stride=2, scope='cnv3')
+            #cnv4  = slim.conv2d(cnv3, 128, [3, 3], stride=2, scope='cnv4')
+            #cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
             # Pose specific layers
             with tf.variable_scope('pose'):
-                cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
+                #cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
                 #cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
-                #
-                #
-                #
-                # Primary Capsules layer, return [batch_size, 1152, 8, 1]
-                with tf.variable_scope('PrimaryCaps_layer'):
-                    primaryCaps = CapsLayer(num_outputs=32, vec_len=8, with_routing=False, layer_type='CONV')
-                    caps1 = primaryCaps(cnv6, kernel_size=9, stride=2)
-                # DigitCaps layer, return [batch_size, 10, 16, 1]
-                with tf.variable_scope('DigitCaps_layer'):
-                    digitCaps = CapsLayer(num_outputs=10, vec_len=16, with_routing=True, layer_type='FC')
-                    self.caps2 = digitCaps(caps1)
-                # Decoder structure in Fig. 2
-                # 1. Do masking, how:
-                with tf.variable_scope('Masking'):
-                    # a). calc ||v_c||, then do softmax(||v_c||)
-                    # [batch_size, 10, 16, 1] => [batch_size, 10, 1, 1]
-                    self.v_length = tf.sqrt(reduce_sum(tf.square(self.caps2), axis=2, keepdims=True) + epsilon)
-                    self.softmax_v = softmax(self.v_length, axis=1)
-
-                    # b). pick out the index of max softmax val of the 10 caps
-                    # [batch_size, 10, 1 ,1] => [batch_size] (index)
-                    self.argmax_idx = tf.to_int32(tf.argmax(self.softmax_v, axis=1))
-                    self.argmax_idx = tf.reshape(self.argmax_idx, shape=(cfg.batch_size, ))
-
-                    # Method 1.
-                    if not cfg.mask_with_y:
-                        # c). indexing
-                        # It's not easy to understand the indexing process with argmax_idx
-                        # as we are 3-dim animal
-                        masked_v = []
-                        for batch_size in range(cfg.batch_size):
-
-
-                #
-                #
-                #
-                pose_pred = slim.conv2d(cnv7, 6*num_source, [1, 1], scope='pred', 
-                    stride=1, normalizer_fn=None, activation_fn=None)
-                pose_avg = tf.reduce_mean(pose_pred, [1, 2])
+                #pose_pred = slim.conv2d(cnv2, 6*num_source, [1, 1], scope='pred', 
+                #    stride=1, normalizer_fn=None, activation_fn=None)
+                #print("pose_pred_shape : ", np.shape(pose_pred)) # (4, 2, 6)
+                #pose_avg = tf.reduce_mean(pose_pred, [1, 2])
+                #print("pose_avg_shape : ", np.shape(pose_avg)) # (4, 2, 6)
                 # Empirically we found that scaling by a small constant 
                 # facilitates training.
-                pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
+                #pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
+                #print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
+                #
+                #
+                # CapsNet
+                #print(cnv6.get_shape()) # (4, 2, 7, 256)
+                capsnet = CapsNet(cnv2)
+                pose_final = capsnet.decoded
+                exit()
+                #
+                #
+                #
             # Exp mask specific layers
             if do_exp:
                 with tf.variable_scope('exp'):
