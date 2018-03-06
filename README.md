@@ -1,7 +1,7 @@
 # Using Odometry data
 ## Preparing training data
 ```bash
-python data/prepare_train_data.py --dataset_dir=/home/jwlim/hdd2/KITTI_odometry/dataset/ --dataset_name='kitti_odom' --dump_root =/home/jwlim/hdd2/formatted_odom/ --seq_length=5 --img_width=416 --img_height=128 --num_threads=4
+python data/prepare_train_data.py --dataset_dir=/home/jwlim/Downloads/KITTI_odometry/dataset/ --dataset_name='kitti_odom' --dump_root =/home/jwlim/hdd2/formatted_odom --seq_length=3 --img_width=416 --img_height=128 --num_threads=4
 ```
 
 ## Training
@@ -20,7 +20,7 @@ and visualize the training progress by opening [https://localhost:8888](https://
 ## Pose
 For testing sequence [9]
 ```bash
-python test_kitti_pose.py --test_seq [sequence_id] --dataset-dir /home/jwlim/hdd2/poses/ --output_dir /home/jwlim/hdd2/output/ --ckpt_file /home/jwlim/hdd2/checkpoints/model_file
+python test_kitti_pose.py --test_seq [sequence_id] --dataset-dir /home/jwlim/hdd2/poses/ --output_dir /home/jwlim/hdd2/output/ --ckpt_file /home/jwlim/hdd2/checkpoints/model_file --seq_length=3
 ```
 
 ---
