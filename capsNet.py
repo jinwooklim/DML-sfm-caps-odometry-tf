@@ -112,6 +112,9 @@ class CapsNet(object):
             fc2 = tf.contrib.layers.fully_connected(fc1, num_outputs=1024)
             assert fc2.get_shape() == [cfg.batch_size, 1024]
             self.decoded = tf.contrib.layers.fully_connected(fc2, num_outputs=784, activation_fn=tf.sigmoid)
+            #
+            # We must change bound part for non-image data, scalar (yaw_rate error)
+            #
 
     def loss(self):
         # 1. The margin loss
@@ -154,8 +157,8 @@ class CapsNet(object):
         train_summary.append(tf.summary.scalar('train/margin_loss', self.margin_loss))
         train_summary.append(tf.summary.scalar('train/reconstruction_loss', self.reconstruction_err))
         train_summary.append(tf.summary.scalar('train/total_loss', self.total_loss))
-        recon_img = tf.reshape(self.decoded, shape=(cfg.batch_size, 28, 28, 1))
-        train_summary.append(tf.summary.image('reconstruction_img', recon_img))
+        #recon_img = tf.reshape(self.decoded, shape=(cfg.batch_size, 28, 28, 1))
+        #train_summary.append(tf.summary.image('reconstruction_img', recon_img))
         self.train_summary = tf.summary.merge(train_summary)
 
         correct_prediction = tf.equal(tf.to_int32(self.labels), self.argmax_idx)
