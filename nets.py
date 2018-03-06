@@ -57,7 +57,6 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
                 #print(cnv6.get_shape()) # (4, 2, 7, 256)
                 capsnet = CapsNet(cnv2)
                 pose_final = capsnet.decoded
-                exit()
                 #
                 #
                 #
