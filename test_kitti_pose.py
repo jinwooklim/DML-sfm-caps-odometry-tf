@@ -8,18 +8,21 @@ import numpy as np
 from glob import glob
 from SfMLearner import SfMLearner
 from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
+from config import cfg
 
+'''
 flags = tf.app.flags
 #flags.DEFINE_integer("batch_size", 1, "The size of of a sample batch")
 flags.DEFINE_integer("img_height", 128, "Image height")
 flags.DEFINE_integer("img_width", 416, "Image width")
-#flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
-flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
+flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
+#flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
 flags.DEFINE_integer("test_seq", 9, "Sequence id to test")
 flags.DEFINE_string("dataset_dir", None, "Dataset directory")
 flags.DEFINE_string("output_dir", None, "Output directory")
 flags.DEFINE_string("ckpt_file", None, "checkpoint file")
-FLAGS = flags.FLAGS
+cfg = flags.cfg
+'''
 
 def load_image_sequence(dataset_dir, 
                         frames, 
@@ -58,42 +61,42 @@ def is_valid_sample(frames, tgt_idx, seq_length):
 
 def main():
     sfm = SfMLearner()
-    sfm.setup_inference(FLAGS.img_height,
-                        FLAGS.img_width,
+    sfm.setup_inference(cfg.img_height,
+                        cfg.img_width,
                         'pose',
-                        FLAGS.seq_length)
+                        cfg.seq_length)
     saver = tf.train.Saver([var for var in tf.trainable_variables()]) 
 
-    if not os.path.isdir(FLAGS.output_dir):
-        os.makedirs(FLAGS.output_dir)
-    seq_dir = os.path.join(FLAGS.dataset_dir, 'sequences', '%.2d' % FLAGS.test_seq)
+    if not os.path.isdir(cfg.output_dir):
+        os.makedirs(cfg.output_dir)
+    seq_dir = os.path.join(cfg.dataset_dir, 'sequences', '%.2d' % cfg.test_seq)
     img_dir = os.path.join(seq_dir, 'image_2')
     N = len(glob(img_dir + '/*.png'))
-    test_frames = ['%.2d %.6d' % (FLAGS.test_seq, n) for n in range(N)]
-    with open(FLAGS.dataset_dir + 'sequences/%.2d/times.txt' % FLAGS.test_seq, 'r') as f:
+    test_frames = ['%.2d %.6d' % (cfg.test_seq, n) for n in range(N)]
+    with open(cfg.dataset_dir + 'sequences/%.2d/times.txt' % cfg.test_seq, 'r') as f:
         times = f.readlines()
     times = np.array([float(s[:-1]) for s in times])
-    max_src_offset = (FLAGS.seq_length - 1)//2
+    max_src_offset = (cfg.seq_length - 1)//2
     with tf.Session() as sess:
-        saver.restore(sess, FLAGS.ckpt_file)
+        saver.restore(sess, cfg.ckpt_file)
         for tgt_idx in range(N):
-            if not is_valid_sample(test_frames, tgt_idx, FLAGS.seq_length):
+            if not is_valid_sample(test_frames, tgt_idx, cfg.seq_length):
                 continue
             if tgt_idx % 100 == 0:
                 print('Progress: %d/%d' % (tgt_idx, N))
             # TODO: currently assuming batch_size = 1
-            image_seq = load_image_sequence(FLAGS.dataset_dir, 
+            image_seq = load_image_sequence(cfg.dataset_dir, 
                                             test_frames, 
                                             tgt_idx, 
-                                            FLAGS.seq_length, 
-                                            FLAGS.img_height, 
-                                            FLAGS.img_width)
+                                            cfg.seq_length, 
+                                            cfg.img_height, 
+                                            cfg.img_width)
             pred = sfm.inference(image_seq[None, :, :, :], sess, mode='pose')
             pred_poses = pred['pose'][0]
             # Insert the target pose [0, 0, 0, 0, 0, 0] 
             pred_poses = np.insert(pred_poses, max_src_offset, np.zeros((1,6)), axis=0)
             curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset + 1]
-            out_file = FLAGS.output_dir + '%.6d.txt' % (tgt_idx - max_src_offset)
+            out_file = cfg.output_dir + '%.6d.txt' % (tgt_idx - max_src_offset)
             dump_pose_seq_TUM(out_file, pred_poses, curr_times)
 
 main()

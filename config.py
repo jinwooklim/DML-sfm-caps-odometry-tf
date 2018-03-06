@@ -16,7 +16,7 @@ flags.DEFINE_integer("num_of_class", 11, "Number of class")
 ###########################
 #flags = tf.app.flags
 #flags.DEFINE_string("dataset_dir", "", "Dataset directory")
-flags.DEFINE_string("dataset_dir", "/home/jwlim/hdd2/formatted/", "Dataset directory")
+flags.DEFINE_string("dataset_dir", "/home/jwlim/hdd2/formatted_odom/", "Dataset directory")
 #flags.DEFINE_string('checkpoint_dir', "./checkpoints/", "Directory name to save the checkpoints")
 flags.DEFINE_string('checkpoint_dir', "/home/jwlim/hdd2/checkpoints/", "Directory name to save the checkpoints")
 flags.DEFINE_string("init_checkpoint_file", None, "Specific checkpoint file to initialize from")
@@ -27,8 +27,8 @@ flags.DEFINE_float("explain_reg_weight", 0.0, "Weight for explanability regulari
 flags.DEFINE_integer("batch_size", 4, "The size of of a sample batch")
 flags.DEFINE_integer("img_height", 128, "Image height")
 flags.DEFINE_integer("img_width", 416, "Image width")
-flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
-#flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
+#flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
+flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
 flags.DEFINE_integer("max_steps", 200000, "Maximum number of training iterations")
 flags.DEFINE_integer("summary_freq", 100, "Logging every log_freq iterations")
 flags.DEFINE_integer("save_latest_freq", 5000, \
