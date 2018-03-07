@@ -40,23 +40,20 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
             cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
             # Pose specific layers
             with tf.variable_scope('pose'):
-                cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
-                cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
-                pose_pred = slim.conv2d(cnv2, 6*num_source, [1, 1], scope='pred', 
-                    stride=1, normalizer_fn=None, activation_fn=None)
-                print("pose_pred_shape : ", np.shape(pose_pred)) # (4, 2, 6)
-                pose_avg = tf.reduce_mean(pose_pred, [1, 2])
-                print("pose_avg_shape : ", np.shape(pose_avg)) # (4, 2, 6)
+                #cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
+                #cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
+                #pose_pred = slim.conv2d(cnv2, 6*num_source, [1, 1], scope='pred', 
+                #    stride=1, normalizer_fn=None, activation_fn=None)
+                #pose_avg = tf.reduce_mean(pose_pred, [1, 2])
                 # Empirically we found that scaling by a small constant 
                 # facilitates training.
-                pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
-                print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
+                #pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
+                #print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
                 #
                 #
                 # CapsNet
-                #print(cnv6.get_shape()) # (4, 2, 7, 256)
-                #capsnet = CapsNet(cnv2)
-                #pose_final = capsnet.decoded
+                capsnet = CapsNet(cnv2)
+                pose_final = capsnet.decoded
                 #
                 #
                 #

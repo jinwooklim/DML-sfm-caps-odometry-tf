@@ -20,10 +20,16 @@ class CapsNet(object):
     #def __init__(self, is_training=True):
     def __init__(self, conv1, is_training=True):
         self.graph = tf.Graph()
+        self.X, self.labels = get_batch_data(cfg.dataset_dir, cfg.capsdata_dir, cfg.batch_size)
+        self.Y = tf.one_hot(self.labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
+        self.build_arch(conv1)
+        self.loss()
+        self._summary()
+        '''
         #with self.graph.as_default():
         if is_training:
-            #self.X, self.labels = get_batch_data(cfg.dataset, cfg.batch_size, cfg.num_threads)
-            #self.Y = tf.one_hot(self.labels, depth=10, axis=1, dtype=tf.float32)
+            #self.X, self.labels = get_batch_data(cfg.caps_dataset, cfg.batch_size, cfg.num_threads)
+            #self.Y = tf.one_hot(self.labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
 
             self.build_arch(conv1)
             self.loss()
@@ -39,7 +45,7 @@ class CapsNet(object):
             self.Y = tf.reshape(self.labels, shape=(cfg.batch_size, 10, 1))
             self.build_arch(conv1)
             print("---Finish init---")
-
+        '''
         tf.logging.info('Seting up the main structure')
 
     def build_arch(self, conv1):
@@ -111,10 +117,12 @@ class CapsNet(object):
             assert fc1.get_shape() == [cfg.batch_size, 512]
             fc2 = tf.contrib.layers.fully_connected(fc1, num_outputs=1024)
             assert fc2.get_shape() == [cfg.batch_size, 1024]
-            self.decoded = tf.contrib.layers.fully_connected(fc2, num_outputs=784, activation_fn=tf.sigmoid)
+            #self.decoded = tf.contrib.layers.fully_connected(fc2, num_outputs=784, activation_fn=tf.sigmoid)
             #
-            # We must change bound part for non-image data, scalar (yaw_rate error)
+            # Edit by jwlim
             #
+            fc3 = tf.contrib.layers.fully_connected(fc2, num_outputs=784)
+            self.decoded = tf.contrib.layers.fully_connected(fc3, num_outputs=1, activation_fn=tf.sigmoid) 
 
     def loss(self):
         # 1. The margin loss
@@ -134,6 +142,7 @@ class CapsNet(object):
         # calc T_c: [batch_size, 10]
         # T_c = Y, is my understanding correct? Try it.
         T_c = self.Y
+        print(T_c.get_shape())
         # [batch_size, 10], element-wise multiply
         L_c = T_c * max_l + cfg.lambda_val * (1 - T_c) * max_r
 

@@ -2,7 +2,7 @@ import os
 import scipy
 import numpy as np
 import tensorflow as tf
-
+import glob
 
 def load_mnist(batch_size, is_training=True):
     path = os.path.join('data', 'mnist')
@@ -80,7 +80,7 @@ def load_data(dataset, batch_size, is_training=True, one_hot=False):
     else:
         raise Exception('Invalid dataset, please check the name of dataset:', dataset)
 
-
+'''
 def get_batch_data(dataset, batch_size, num_threads):
     if dataset == 'mnist':
         trX, trY, num_tr_batch, valX, valY, num_val_batch = load_mnist(batch_size, is_training=True)
@@ -94,7 +94,37 @@ def get_batch_data(dataset, batch_size, num_threads):
                                   allow_smaller_final_batch=False)
 
     return(X, Y)
+'''
 
+
+def get_batch_data(dataset_dir, caps_dataset_dir, batch_size):
+    # Load all capsdata
+    file_list = sorted(glob.glob(os.path.join(caps_dataset_dir,'*.csv')))
+    data_list = []
+    for f in file_list:
+        data = np.loadtxt(fname=f, delimiter=',')
+        data_list.append(data)
+    
+    # Load the list of training files into queues
+    text_path = os.path.join(dataset_dir, 'train.txt')
+    with open(text_path, 'r') as f:
+        frames = f.readlines()
+    subfolders = [int(x.split(' ')[0]) for x in frames]
+    frames_ids = [int(x.split(' ')[1][:-1]) for x in frames]
+    #for i in range(10):
+    #    temp = data_list[subfolders[i]][frames_ids[i]-1][0]
+    #    print(temp)
+    class_list = [int(data_list[subfolders[i]][frames_ids[i]-1][1]) for i in range(len(frames))]
+    error_list = [data_list[subfolders[i]][frames_ids[i]-1][2] for i in range(len(frames))]
+    
+    data_queues = tf.train.slice_input_producer([error_list, class_list])
+    X, Y = tf.train.batch(data_queues, num_threads=8, 
+            batch_size=batch_size,
+            capacity=batch_size * 64,
+            allow_smaller_final_batch=False)
+
+    return (X, Y)
+            
 
 def save_images(imgs, size, path):
     '''
@@ -132,3 +162,6 @@ def softmax(logits, axis=None):
         return tf.nn.softmax(logits, axis=axis)
     except:
         return tf.nn.softmax(logits, dim=axis)
+
+if __name__ == "__main__":
+    get_batch_data("/home/jwlim/hdd2/formatted_odom/", "/home/jwlim/hdd2/capsnet_data/", batch_size=10)
