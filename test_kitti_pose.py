@@ -8,9 +8,7 @@ import numpy as np
 from glob import glob
 from SfMLearner import SfMLearner
 from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
-from config import cfg
 
-'''
 flags = tf.app.flags
 #flags.DEFINE_integer("batch_size", 1, "The size of of a sample batch")
 flags.DEFINE_integer("img_height", 128, "Image height")
@@ -22,7 +20,6 @@ flags.DEFINE_string("dataset_dir", None, "Dataset directory")
 flags.DEFINE_string("output_dir", None, "Output directory")
 flags.DEFINE_string("ckpt_file", None, "checkpoint file")
 cfg = flags.cfg
-'''
 
 def load_image_sequence(dataset_dir, 
                         frames, 

@@ -119,10 +119,11 @@ class CapsNet(object):
             assert fc2.get_shape() == [cfg.batch_size, 1024]
             #self.decoded = tf.contrib.layers.fully_connected(fc2, num_outputs=784, activation_fn=tf.sigmoid)
             #
-            # Edit by jwlim
+            # modified by jwlim
             #
-            fc3 = tf.contrib.layers.fully_connected(fc2, num_outputs=784)
-            self.decoded = tf.contrib.layers.fully_connected(fc3, num_outputs=1, activation_fn=tf.sigmoid) 
+            fc3 = tf.contrib.layers.fully_connected(fc2, num_outputs=784) # 28x28
+            fc4 = tf.contrib.layers.fully_connected(fc3, num_outputs=144) # 28x28
+            self.decoded = tf.contrib.layers.fully_connected(fc4, num_outputs=12, activation_fn=tf.sigmoid)
 
     def loss(self):
         # 1. The margin loss

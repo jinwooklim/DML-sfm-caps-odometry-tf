@@ -68,7 +68,7 @@ class SfMLearner(object):
                     curr_proj_image = projective_inverse_warp(
                         curr_src_image_stack[:,:,:,3*i:3*(i+1)], 
                         tf.squeeze(pred_depth[s], axis=3), 
-                        pred_poses[:,i,:], 
+                        pred_poses[:,i,:], # [4,1] , [3], [3], [3] 
                         intrinsics[:,s,:,:])
                     curr_proj_error = tf.abs(curr_proj_image - curr_tgt_image)
                     # Cross-entropy loss as regularization for the 

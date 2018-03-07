@@ -5,6 +5,7 @@ from tensorflow.contrib.layers.python.layers import utils
 import numpy as np
 # Add Capsule network the end of Conv layer
 from capsNet import CapsNet
+from config import cfg
 
 # Range of disparity/inverse depth values
 DISP_SCALING = 10
@@ -45,15 +46,18 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
                 #pose_pred = slim.conv2d(cnv2, 6*num_source, [1, 1], scope='pred', 
                 #    stride=1, normalizer_fn=None, activation_fn=None)
                 #pose_avg = tf.reduce_mean(pose_pred, [1, 2])
-                # Empirically we found that scaling by a small constant 
-                # facilitates training.
+                ## Empirically we found that scaling by a small constant 
+                ## facilitates training.
                 #pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
                 #print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
+                #exit()
                 #
                 #
                 # CapsNet
                 capsnet = CapsNet(cnv2)
-                pose_final = capsnet.decoded
+                print("decoded : ", np.shape(capsnet.decoded)) # (4, 784)
+                pose_final = tf.reshape(capsnet.decoded, [cfg.batch_size, num_source, 6])
+                print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
                 #
                 #
                 #
