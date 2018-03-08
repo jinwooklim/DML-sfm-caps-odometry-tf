@@ -58,24 +58,24 @@ class CapsNet(object):
         #    
         # Primary Capsules layer, return [batch_size, 1152, 8, 1]
         with tf.variable_scope('PrimaryCaps_layer'):
-            print("----- PrimaryCaps_layer step -----")
+            #print("----- PrimaryCaps_layer step -----")
             primaryCaps = CapsLayer(num_outputs=32, vec_len=8, with_routing=False, layer_type='CONV')
             caps1 = primaryCaps(conv1, kernel_size=9, stride=2)
-            print("caps1 : ", caps1.get_shape())
+            #print("caps1 : ", caps1.get_shape())
             #assert caps1.get_shape() == [cfg.batch_size, 1152, 8, 1]
             #assert caps1.get_shape() == [cfg.batch_size, 89600, 8, 1]
 
         # DigitCaps layer, return [batch_size, 10, 16, 1]
         with tf.variable_scope('DigitCaps_layer'):
-            print("----- DigitCaps_layer step -----")
+            #print("----- DigitCaps_layer step -----")
             digitCaps = CapsLayer(num_outputs=cfg.num_of_class, vec_len=16, with_routing=True, layer_type='FC')
             self.caps2 = digitCaps(caps1)
-            print("----- Next step -----")
+            #print("----- Next step -----")
 
         # Decoder structure in Fig. 2
         # 1. Do masking, how:
         with tf.variable_scope('Masking'):
-            print("----- Masking step -----")
+            #print("----- Masking step -----")
             # a). calc ||v_c||, then do softmax(||v_c||)
             # [batch_size, 10, 16, 1] => [batch_size, 10, 1, 1]
             self.v_length = tf.sqrt(reduce_sum(tf.square(self.caps2),
@@ -123,7 +123,8 @@ class CapsNet(object):
             #
             fc3 = tf.contrib.layers.fully_connected(fc2, num_outputs=784) # 28x28
             fc4 = tf.contrib.layers.fully_connected(fc3, num_outputs=144) # 28x28
-            self.decoded = tf.contrib.layers.fully_connected(fc4, num_outputs=12, activation_fn=tf.sigmoid)
+            self.decoded = tf.contrib.layers.fully_connected(fc4, num_outputs=48, activation_fn=tf.sigmoid)
+            self.decoded = tf.reshape(self.decoded, [-1, 1, 4, 12])
 
     def loss(self):
         # 1. The margin loss
@@ -143,7 +144,7 @@ class CapsNet(object):
         # calc T_c: [batch_size, 10]
         # T_c = Y, is my understanding correct? Try it.
         T_c = self.Y
-        print(T_c.get_shape())
+        #print(T_c.get_shape())
         # [batch_size, 10], element-wise multiply
         L_c = T_c * max_l + cfg.lambda_val * (1 - T_c) * max_r
 

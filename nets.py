@@ -23,7 +23,7 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
     H = inputs.get_shape()[1].value
     W = inputs.get_shape()[2].value
     num_source = int(src_image_stack.get_shape()[3].value//3)
-    print("num_source : ", num_source)
+    #print("num_source : ", num_source)
     with tf.variable_scope('pose_exp_net') as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
         with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
@@ -43,21 +43,25 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
             with tf.variable_scope('pose'):
                 #cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
                 #cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
-                #pose_pred = slim.conv2d(cnv2, 6*num_source, [1, 1], scope='pred', 
+                ## pose_pred is important to test
+                #pose_pred = slim.conv2d(cnv7, 6*num_source, [1, 1], scope='pred', 
                 #    stride=1, normalizer_fn=None, activation_fn=None)
-                #pose_avg = tf.reduce_mean(pose_pred, [1, 2])
-                ## Empirically we found that scaling by a small constant 
-                ## facilitates training.
-                #pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
-                #print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
+                #print("pose_pred : ", np.shape(pose_pred)) # (4, 1, 4, 12)
                 #exit()
+                #pose_avg = tf.reduce_mean(pose_pred, [1, 2])
+                # Empirically we found that scaling by a small constant 
+                # facilitates training.
+                #pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
                 #
                 #
                 # CapsNet
-                capsnet = CapsNet(cnv2)
-                print("decoded : ", np.shape(capsnet.decoded)) # (4, 784)
-                pose_final = tf.reshape(capsnet.decoded, [cfg.batch_size, num_source, 6])
-                print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
+                with tf.variable_scope('CapsNet'):
+                    capsnet = CapsNet(cnv2)
+                    pose_pred = capsnet.decoded
+                    print("pose_pred_shape : ", np.shape(pose_pred)) # (4, 1, 4, 12))
+                    pose_avg = tf.reduce_mean(pose_pred, [1, 2])
+                    pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
+                    print("pose_final_shape : ", np.shape(pose_final)) # (4, 2, 6)
                 #
                 #
                 #

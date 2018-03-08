@@ -46,7 +46,7 @@ class CapsLayer(object):
             if not self.with_routing:
                 # the PrimaryCaps layer, a convolutional layer
                 # input: [batch_size, 20, 20, 256]
-                print("Input : ", input.get_shape())
+                #print("Input : ", input.get_shape())
                 assert input.get_shape() == [cfg.batch_size, 32, 104, 32]
 
                 '''
@@ -83,7 +83,7 @@ class CapsLayer(object):
 
                 # [batch_size, 1152, 8, 1]
                 capsules = squash(capsules)
-                print("capsules : ", capsules.get_shape())
+                #print("capsules : ", capsules.get_shape())
                 assert capsules.get_shape() == [cfg.batch_size, 18432, 8, 1]
                 return(capsules)
 
@@ -138,9 +138,9 @@ def routing(input, b_IJ):
     #
     # Error part
     #
-    print("W*input : ", np.shape(W * input))
-    print("W: ", np.shape(W))
-    print("input : ", np.shape(input))
+    #print("W*input : ", np.shape(W * input))
+    #print("W: ", np.shape(W))
+    #print("input : ", np.shape(input))
     u_hat = tf.reduce_sum(W * input, axis=3, keep_dims=True)
     #u_hat = tf.reshape(u_hat, shape=[-1, 1152, 10, 16, 1])
     u_hat = tf.reshape(u_hat, shape=[-1, 18432, cfg.num_of_class, 16, 1])
