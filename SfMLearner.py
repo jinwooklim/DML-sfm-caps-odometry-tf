@@ -12,7 +12,7 @@ from utils import *
 class SfMLearner(object):
     def __init__(self):
         pass
-    
+
     def build_train_graph(self):
         opt = self.opt
         loader = DataLoader(opt.dataset_dir,
@@ -27,17 +27,16 @@ class SfMLearner(object):
             src_image_stack = self.preprocess_image(src_image_stack)
 
         with tf.name_scope("depth_prediction"):
-            pred_disp, depth_net_endpoints = disp_net(tgt_image, 
-                                                      is_training=True)
+            pred_disp, depth_net_endpoints = disp_net(tgt_image, is_training=True)
             pred_depth = [1./d for d in pred_disp]
 
         with tf.name_scope("pose_and_explainability_prediction"):
             pred_poses, pred_exp_logits, pose_exp_net_endpoints = \
                 pose_exp_net(tgt_image,
-                             src_image_stack, 
+                             src_image_stack,
                              do_exp=(opt.explain_reg_weight > 0),
                              is_training=True)
-
+        
         with tf.name_scope("compute_loss"):
             pixel_loss = 0
             exp_loss = 0
@@ -68,7 +67,7 @@ class SfMLearner(object):
                     curr_proj_image = projective_inverse_warp(
                         curr_src_image_stack[:,:,:,3*i:3*(i+1)], 
                         tf.squeeze(pred_depth[s], axis=3), 
-                        pred_poses[:,i,:], # [4,1] , [3], [3], [3] 
+                        pred_poses[:,0,:], # i 
                         intrinsics[:,s,:,:])
                     curr_proj_error = tf.abs(curr_proj_image - curr_tgt_image)
                     # Cross-entropy loss as regularization for the 
@@ -200,6 +199,7 @@ class SfMLearner(object):
         # for grad, var in self.grads_and_vars:
         #     tf.summary.histogram(var.op.name + "/gradients", grad)
 
+
     def train(self, opt):
         opt.num_source = opt.seq_length - 1
         # TODO: currently fixed to 4
@@ -210,15 +210,15 @@ class SfMLearner(object):
         with tf.name_scope("parameter_count"):
             parameter_count = tf.reduce_sum([tf.reduce_prod(tf.shape(v)) \
                                             for v in tf.trainable_variables()])
-        self.saver = tf.train.Saver([var for var in tf.model_variables()] + \
-                                    [self.global_step],
-                                     max_to_keep=10)
-        sv = tf.train.Supervisor(logdir=opt.checkpoint_dir, 
-                                 save_summaries_secs=0, 
-                                 saver=None)
+        #self.saver = tf.train.Saver([var for var in tf.model_variables()] + \
+        #                            [self.global_step],
+        #                             max_to_keep=10)
+        self.sv = tf.train.Supervisor(logdir=opt.checkpoint_dir, 
+                                 save_summaries_secs=0)
+                                 #saver=None)
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        with sv.managed_session(config=config) as sess:
+        with self.sv.managed_session(config=config) as sess:
             print('Trainable variables: ')
             for var in tf.trainable_variables():
                 print(var.name)
@@ -229,7 +229,8 @@ class SfMLearner(object):
                 else:
                     checkpoint = opt.init_checkpoint_file
                 print("Resume training from previous checkpoint: %s" % checkpoint)
-                self.saver.restore(sess, checkpoint)
+                #self.saver.restore(sess, checkpoint)
+                self.sv.saver.restore(sess, checkpoint)
             start_time = time.time()
             for step in range(1, opt.max_steps):
                 fetches = {
@@ -240,13 +241,13 @@ class SfMLearner(object):
 
                 if step % opt.summary_freq == 0:
                     fetches["loss"] = self.total_loss
-                    fetches["summary"] = sv.summary_op
+                    fetches["summary"] = self.sv.summary_op
 
                 results = sess.run(fetches)
                 gs = results["global_step"]
 
                 if step % opt.summary_freq == 0:
-                    sv.summary_writer.add_summary(results["summary"], gs)
+                    self.sv.summary_writer.add_summary(results["summary"], gs)
                     train_epoch = math.ceil(gs / self.steps_per_epoch)
                     train_step = gs - (train_epoch - 1) * self.steps_per_epoch
                     print("Epoch: [%2d] [%5d/%5d] time: %4.4f/it loss: %.3f" \
@@ -320,8 +321,10 @@ class SfMLearner(object):
         fetches = {}
         if mode == 'depth':
             fetches['depth'] = self.pred_depth
+        
         if mode == 'pose':
             fetches['pose'] = self.pred_poses
+
         results = sess.run(fetches, feed_dict={self.inputs:inputs})
         return results
 
@@ -329,9 +332,8 @@ class SfMLearner(object):
         model_name = 'model'
         print(" [*] Saving checkpoint to %s..." % checkpoint_dir)
         if step == 'latest':
-            self.saver.save(sess, 
-                            os.path.join(checkpoint_dir, model_name + '.latest'))
+            #self.saver.save(sess, os.path.join(checkpoint_dir, model_name + '.latest'))
+            self.sv.saver.save(sess, os.path.join(checkpoint_dir, model_name + '.latest'))
         else:
-            self.saver.save(sess, 
-                            os.path.join(checkpoint_dir, model_name),
-                            global_step=step)
+            #self.saver.save(sess, os.path.join(checkpoint_dir, model_name),global_step=step)
+            self.sv.saver.save(sess, os.path.join(checkpoint_dir, model_name),global_step=step)

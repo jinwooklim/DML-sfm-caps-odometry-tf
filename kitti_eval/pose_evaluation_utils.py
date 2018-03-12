@@ -373,6 +373,7 @@ def dump_pose_seq_TUM(out_file, poses, times):
     first_pose = pose_vec_to_mat(poses[0])
     with open(out_file, 'w') as f:
         for p in range(len(times)):
+            #this_pose = pose_vec_to_mat(poses[p])
             this_pose = pose_vec_to_mat(poses[p])
             this_pose = np.dot(first_pose, np.linalg.inv(this_pose))
             tx = this_pose[0, 3]

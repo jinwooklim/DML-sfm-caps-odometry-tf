@@ -11,11 +11,11 @@ from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
 from config import cfg
 '''
 flags = tf.app.flags
-#flags.DEFINE_integer("batch_size", 1, "The size of of a sample batch")
+flags.DEFINE_integer("batch_size", 1, "The size of of a sample batch")
 flags.DEFINE_integer("img_height", 128, "Image height")
 flags.DEFINE_integer("img_width", 416, "Image width")
-flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
-#flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
+#flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
+flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
 flags.DEFINE_integer("test_seq", 9, "Sequence id to test")
 flags.DEFINE_string("dataset_dir", None, "Dataset directory")
 flags.DEFINE_string("output_dir", None, "Output directory")
@@ -60,14 +60,11 @@ def is_valid_sample(frames, tgt_idx, seq_length):
 
 def main():
     sfm = SfMLearner()
-    sfm.setup_inference(cfg.img_height,
-                        cfg.img_width,
-                        'pose',
-                        cfg.seq_length)
-    saver = tf.train.Saver([var for var in tf.trainable_variables()]) 
-
-    if not os.path.isdir(cfg.output_dir):
-        os.makedirs(cfg.output_dir)
+    sfm.setup_inference(cfg.img_height, cfg.img_width, 'pose', cfg.seq_length)
+    #saver = tf.train.Saver([var for var in tf.trainable_variables()]) 
+    saver = tf.train.Saver() 
+    #if not os.path.isdir(cfg.output_dir):
+    #    os.makedirs(cfg.output_dir)
     seq_dir = os.path.join(cfg.dataset_dir, 'sequences', '%.2d' % cfg.test_seq)
     img_dir = os.path.join(seq_dir, 'image_2')
     N = len(glob(img_dir + '/*.png'))
@@ -94,7 +91,10 @@ def main():
             pred_poses = pred['pose'][0]
             # Insert the target pose [0, 0, 0, 0, 0, 0] 
             pred_poses = np.insert(pred_poses, max_src_offset, np.zeros((1,6)), axis=0)
-            curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset + 1]
+            #print("pred_poses : " , pred_poses)
+            #curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset + 1]
+            curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset]
+            #print("times : " , curr_times)
             out_file = cfg.output_dir + '%.6d.txt' % (tgt_idx - max_src_offset)
             dump_pose_seq_TUM(out_file, pred_poses, curr_times)
 

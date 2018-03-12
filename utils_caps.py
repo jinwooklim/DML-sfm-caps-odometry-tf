@@ -115,14 +115,21 @@ def get_batch_data(dataset_dir, caps_dataset_dir, batch_size):
     #    temp = data_list[subfolders[i]][frames_ids[i]-1][0]
     #    print(temp)
     class_list = [int(data_list[subfolders[i]][frames_ids[i]-1][1]) for i in range(len(frames))]
-    error_list = [data_list[subfolders[i]][frames_ids[i]-1][2] for i in range(len(frames))]
-    
-    data_queues = tf.train.slice_input_producer([error_list, class_list])
+    yaw_list = [data_list[subfolders[i]][frames_ids[i]-1][2] for i in range(len(frames))]
+    tx_list = [data_list[subfolders[i]][frames_ids[i]-1][3] for i in range(len(frames))]
+    ty_list = [data_list[subfolders[i]][frames_ids[i]-1][4] for i in range(len(frames))]
+    tz_list = [data_list[subfolders[i]][frames_ids[i]-1][5] for i in range(len(frames))]
+    #input_list = [data_list[subfolders[i]][frames_ids[i]-1][2:] for i in range(len(frames))]
+    #print(np.shape(input_list))
+    #exit()
+    x_list = tf.stack([yaw_list, tx_list, ty_list, tz_list], axis=-1)
+    data_queues = tf.train.slice_input_producer([x_list, class_list])
     X, Y = tf.train.batch(data_queues, num_threads=8, 
             batch_size=batch_size,
             capacity=batch_size * 64,
             allow_smaller_final_batch=False)
 
+    #(4,4) , (4,)
     return (X, Y)
             
 

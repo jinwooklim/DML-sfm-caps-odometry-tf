@@ -36,7 +36,7 @@ def main(_):
 
     pp = pprint.PrettyPrinter()
     #pp.pprint(flags.FLAGS.__flags)
-    pp.pprint(cfg.__flags)
+    #pp.pprint(cfg.__flags)
 
     #if not os.path.exists(FLAGS.checkpoint_dir):
     #    os.makedirs(FLAGS.checkpoint_dir)

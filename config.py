@@ -8,7 +8,7 @@ flags = tf.app.flags
 ##########################
 flags.DEFINE_integer("num_of_class", 11, "Number of class")
 flags.DEFINE_string("capsdata_dir", "/home/jwlim/hdd2/capsnet_data/", "Dataset for Capsnet")
-
+flags.DEFINE_string("ckpt_file", "", "Checkpoint file")
 
 ###########################
 #   SfMLearner parameters #
@@ -28,9 +28,9 @@ flags.DEFINE_integer("img_height", 128, "Image height")
 flags.DEFINE_integer("img_width", 416, "Image width")
 flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
 #flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
-flags.DEFINE_integer("max_steps", 200000, "Maximum number of training iterations")
+flags.DEFINE_integer("max_steps", 5000, "Maximum number of training iterations")
 flags.DEFINE_integer("summary_freq", 100, "Logging every log_freq iterations")
-flags.DEFINE_integer("save_latest_freq", 5000, \
+flags.DEFINE_integer("save_latest_freq", 100, \
     "Save the latest model every save_latest_freq iterations (overwrites the previous latest model)")
 flags.DEFINE_boolean("continue_train", False, "Continue training from previous checkpoint")
 ############################################################
@@ -38,7 +38,7 @@ flags.DEFINE_boolean("continue_train", False, "Continue training from previous c
 #   test_kitti_pose        #
 ############################
 flags.DEFINE_integer("test_seq", 9, "Sequence length for test")
-
+flags.DEFINE_string("output_dir", None, "Output directory")
 
 ############################
 #    hyper parameters      #
@@ -53,8 +53,8 @@ flags.DEFINE_float('lambda_val', 0.5, 'down weight of the loss for absent digit 
 #flags.DEFINE_integer('batch_size', 128, 'batch size')
 #flags.DEFINE_integer('epoch', 50, 'epoch')
 flags.DEFINE_integer('iter_routing', 3, 'number of iterations in routing algorithm')
-#flags.DEFINE_boolean('mask_with_y', True, 'use the true label to mask out target capsule or not')
-flags.DEFINE_boolean('mask_with_y', False, 'use the true label to mask out target capsule or not')
+flags.DEFINE_boolean('mask_with_y', True, 'use the true label to mask out target capsule or not')
+#flags.DEFINE_boolean('mask_with_y', False, 'use the true label to mask out target capsule or not')
 
 flags.DEFINE_float('stddev', 0.01, 'stddev for W initializer')
 flags.DEFINE_float('regularization_scale', 0.392, 'regularization coefficient for reconstruction loss, default to 0.0005*784=0.392')
@@ -64,7 +64,7 @@ flags.DEFINE_float('regularization_scale', 0.392, 'regularization coefficient fo
 #   environment setting    #
 ############################
 #flags.DEFINE_string('dataset', 'mnist', 'The name of dataset [mnist, fashion-mnist')
-#flags.DEFINE_boolean('is_training', True, 'train or predict phase')
+flags.DEFINE_boolean('is_training', True, 'train or predict phase')
 flags.DEFINE_integer('num_threads', 8, 'number of threads of enqueueing examples')
 #flags.DEFINE_string('logdir', 'logdir', 'logs directory')
 #flags.DEFINE_integer('train_sum_freq', 100, 'the frequency of saving train summary(step)')
