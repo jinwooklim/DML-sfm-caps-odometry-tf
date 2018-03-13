@@ -8,9 +8,10 @@ import tensorflow.contrib.slim as slim
 from data_loader import DataLoader
 from nets import *
 from utils import *
-
+from capsnet import CapsNet
 class SfMLearner(object):
     def __init__(self):
+        self.capsnet = CapsNet()
         pass
 
     def build_train_graph(self):
@@ -34,6 +35,7 @@ class SfMLearner(object):
             pred_poses, pred_exp_logits, pose_exp_net_endpoints = \
                 pose_exp_net(tgt_image,
                              src_image_stack,
+                             self.capsnet,
                              do_exp=(opt.explain_reg_weight > 0),
                              is_training=True)
         
@@ -106,7 +108,7 @@ class SfMLearner(object):
                 proj_error_stack_all.append(proj_error_stack)
                 if opt.explain_reg_weight > 0:
                     exp_mask_stack_all.append(exp_mask_stack)
-            total_loss = pixel_loss + smooth_loss + exp_loss
+            total_loss = pixel_loss + smooth_loss + exp_loss #+ self.capsnet.total_loss
 
         with tf.name_scope("train_op"):
             train_vars = [var for var in tf.trainable_variables()]
@@ -286,7 +288,7 @@ class SfMLearner(object):
                 input_mc, self.img_height, self.img_width, self.num_source)
         with tf.name_scope("pose_prediction"):
             pred_poses, _, _ = pose_exp_net(
-                tgt_image, src_image_stack, do_exp=False, is_training=False)
+                tgt_image, src_image_stack, self.capsnet, do_exp=False, is_training=False)
             self.inputs = input_uint8
             self.pred_poses = pred_poses
 

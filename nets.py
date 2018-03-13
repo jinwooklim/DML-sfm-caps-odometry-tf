@@ -5,7 +5,7 @@ from tensorflow.contrib.layers.python.layers import utils
 import numpy as np
 # Add Capsule network the end of Conv layer
 #from capsNet import CapsNeot
-import capsnet
+#import capsnet
 from config import cfg
 from utils_caps import get_batch_data
 from euler_to_rotation import yaw_to_rotation
@@ -21,7 +21,7 @@ def resize_like(inputs, ref):
         return inputs
     return tf.image.resize_nearest_neighbor(inputs, [rH.value, rW.value])
 
-def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
+def pose_exp_net(tgt_image, src_image_stack, capsnet, do_exp=True, is_training=True):
     inputs = tf.concat([tgt_image, src_image_stack], axis=3)
     H = inputs.get_shape()[1].value
     W = inputs.get_shape()[2].value
@@ -48,40 +48,48 @@ def pose_exp_net(tgt_image, src_image_stack, do_exp=True, is_training=True):
                 cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
                 cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
                 # pose_pred is important to test
+                #pose_pred = slim.conv2d(cnv7, 6*1, [1, 1], scope='pred', # (4, 1, 4 ,6) 
                 pose_pred = slim.conv2d(cnv7, 6*num_source, [1, 1], scope='pred', 
                     stride=1, normalizer_fn=None, activation_fn=None)
                 print("pose_pred : ", np.shape(pose_pred)) # (4, 1, 4, 12)
                 pose_avg = tf.reduce_mean(pose_pred, [1, 2])
+                print("pose_avg : ", np.shape(pose_avg)) # (4, 1, 4, 12)
+                exit()
                 # Empirically we found that scaling by a small constant 
                 # facilitates training.
                 pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
                 '''
                 #
-                if cfg.is_training:
-                    X, labels = get_batch_data(cfg.dataset_dir, cfg.capsdata_dir, cfg.batch_size)
-                    Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
-                    capsnet_model = capsnet.model(cnv2)
-                    v_length, prediction = capsnet.predict(capsnet_model)
-                    decoded = capsnet.decoder(capsnet_model, prediction)
-                    margin_loss, reconstruction_loss, total_loss = capsnet.loss(X, Y, v_length, decoded)
-                    train_summary = capsnet.summary(decoded, margin_loss, reconstruction_loss, total_loss)
-                
-                else:
-                    capsnet_model = capsnet.model(cnv2)
-                    _, prediction = capsnet.predict(capsnet_model)
-                    decoded = capsnet.decoder(capsnet_model, prediction)
-                    
-                pose_pred = decoded
-                # Convert yaw to rotation
-                tx_ty_tz = pose_pred[:,1:] # (4, 3)
-                rx, ry, rz = yaw_to_rotation(pose_pred[:,0]*10.0) # get rx, ry, rz (4, 3)
-                rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz]))# (4, 3)
-                converted_pose_pred = tf.concat([tx_ty_tz, rx_ry_rz], 1) # (4 ,6)
-                converted_pose_pred = tf.reshape(converted_pose_pred, [cfg.batch_size, 1, 6])
-                # Finally, Make pose_final 
-                #pose_final = 0.01 * tf.reshape(pose_pred, [-1, num_source, 6]) # (4, 2, 6)
-                pose_final = 0.01 * tf.reshape(converted_pose_pred, [cfg.batch_size, 1, 6]) # (4, 2, 6)
                 #
+                #
+                with tf.name_scope('capsnet'):
+                    if cfg.is_training:
+                        X, labels = get_batch_data(cfg.dataset_dir, cfg.capsdata_dir, cfg.batch_size)
+                        Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
+                        capsnet_model = capsnet.model(cnv2)
+                        v_length, prediction = capsnet.predict(capsnet_model)
+                        decoded = capsnet.decoder(capsnet_model, prediction)
+                        margin_loss, reconstruction_loss, total_loss = capsnet.loss(X, Y, v_length, decoded)
+                        train_summary = capsnet.summary(decoded, margin_loss, reconstruction_loss, total_loss)
+                
+                    else:
+                        capsnet_model = capsnet.model(cnv2)
+                        _, prediction = capsnet.predict(capsnet_model)
+                        decoded = capsnet.decoder(capsnet_model, prediction)
+                    
+                    # Convert yaw to rotation
+                    tx_ty_tz = decoded[:,1:] # (4, 3)
+                    rx, ry, rz = yaw_to_rotation(decoded[:,0]*10.0) # get rx, ry, rz (4, 3)
+                    rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz]))# (4, 3)
+                    converted_decoded = tf.concat([tx_ty_tz, rx_ry_rz], 1) # (4, 6)
+                    converted_decoded = tf.reshape(converted_decoded, [cfg.batch_size, 1, 6]) # (4, 1, 6)
+                    # Make pose_pred (It needs stack)
+                    pose_pred = converted_decoded # (4, 1, 6)
+                    # Finally, Make pose_final 
+                    pose_final = 0.01 * tf.reshape(pose_pred, [cfg.batch_size, 1, 6]) # (4, 1, 6)
+                    #
+                    #
+                    #
                 '''
                 # CapsNet
                 #capsnet = CapsNet(cnv2, is_training)
