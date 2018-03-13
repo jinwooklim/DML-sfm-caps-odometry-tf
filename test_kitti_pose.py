@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 from glob import glob
 from SfMLearner import SfMLearner
-#from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
+from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
 from kitti_eval.pose_evaluation_utils import dump_yawclass_pose_seq_TUM
 from config import cfg
 '''
@@ -99,7 +99,7 @@ def main():
             #curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset]
             print("times : " , curr_times)
             out_file = cfg.output_dir + '%.6d.txt' % (tgt_idx - max_src_offset)
-            #dump_pose_seq_TUM(out_file, pred_poses, curr_times)
-            dump_yawclass_pose_seq_TUM(out_file, pred_poses, pred_yaw_class, curr_times)
+            dump_pose_seq_TUM(out_file, pred_poses, curr_times)
+            #dump_yawclass_pose_seq_TUM(out_file, pred_poses, pred_yaw_class, curr_times)
 
 main()
