@@ -7,7 +7,8 @@ import tensorflow as tf
 import numpy as np
 from glob import glob
 from SfMLearner import SfMLearner
-from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
+#from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
+from kitti_eval.pose_evaluation_utils import dump_yawclass_pose_seq_TUM
 from config import cfg
 '''
 flags = tf.app.flags
@@ -89,13 +90,16 @@ def main():
                                             cfg.img_width)
             pred = sfm.inference(image_seq[None, :, :, :], sess, mode='pose')
             pred_poses = pred['pose'][0]
+            pred_yaw_class = pred['yaw_class'][0]
             # Insert the target pose [0, 0, 0, 0, 0, 0] 
             pred_poses = np.insert(pred_poses, max_src_offset, np.zeros((1,6)), axis=0)
             print("pred_poses : " , pred_poses)
-            #curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset + 1]
-            curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset]
+            print("pred_yaw_class : " , pred_yaw_class)
+            curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset + 1]
+            #curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset]
             print("times : " , curr_times)
             out_file = cfg.output_dir + '%.6d.txt' % (tgt_idx - max_src_offset)
-            dump_pose_seq_TUM(out_file, pred_poses, curr_times)
+            #dump_pose_seq_TUM(out_file, pred_poses, curr_times)
+            dump_yawclass_pose_seq_TUM(out_file, pred_poses, pred_yaw_class, curr_times)
 
 main()

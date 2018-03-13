@@ -151,7 +151,7 @@ class CapsNet():
             fc2 = tf.contrib.layers.fully_connected(fc1, num_outputs=1024)
             assert fc2.get_shape() == [cfg.batch_size, 1024]
             fc3 = tf.contrib.layers.fully_connected(fc2, num_outputs=256)
-            self.decoded = tf.contrib.layers.fully_connected(fc3, num_outputs=4, activation_fn=tf.sigmoid)
+            self.decoded = tf.contrib.layers.fully_connected(fc3, num_outputs=8, activation_fn=tf.sigmoid)
             return self.decoded
 
 

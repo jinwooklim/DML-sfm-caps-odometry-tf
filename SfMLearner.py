@@ -32,7 +32,7 @@ class SfMLearner(object):
             pred_depth = [1./d for d in pred_disp]
 
         with tf.name_scope("pose_and_explainability_prediction"):
-            pred_poses, pred_exp_logits, pose_exp_net_endpoints = \
+            _, pred_poses, pred_exp_logits, pose_exp_net_endpoints = \
                 pose_exp_net(tgt_image,
                              src_image_stack,
                              self.capsnet,
@@ -69,7 +69,7 @@ class SfMLearner(object):
                     curr_proj_image = projective_inverse_warp(
                         curr_src_image_stack[:,:,:,3*i:3*(i+1)], 
                         tf.squeeze(pred_depth[s], axis=3), 
-                        pred_poses[:,0,:], # i 
+                        pred_poses[:,i,:], # i 
                         intrinsics[:,s,:,:])
                     curr_proj_error = tf.abs(curr_proj_image - curr_tgt_image)
                     # Cross-entropy loss as regularization for the 
@@ -287,10 +287,11 @@ class SfMLearner(object):
             loader.batch_unpack_image_sequence(
                 input_mc, self.img_height, self.img_width, self.num_source)
         with tf.name_scope("pose_prediction"):
-            pred_poses, _, _ = pose_exp_net(
+            yaw_class, pred_poses, _, _ = pose_exp_net(
                 tgt_image, src_image_stack, self.capsnet, do_exp=False, is_training=False)
             self.inputs = input_uint8
             self.pred_poses = pred_poses
+            self.yaw_class = yaw_class
 
     def preprocess_image(self, image):
         # Assuming input image is uint8
@@ -326,6 +327,7 @@ class SfMLearner(object):
         
         if mode == 'pose':
             fetches['pose'] = self.pred_poses
+            fetches['yaw_class'] = self.yaw_class
 
         results = sess.run(fetches, feed_dict={self.inputs:inputs})
         return results

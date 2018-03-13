@@ -12,6 +12,7 @@ python train.py --dataset_dir=/home/jwlim/hdd2/formatted_odom/ --checkpoint_dir=
 You can then start a `tensorboard` session by
 ```bash
 tensorboard --logdir=/path/to/tensorflow/log/files --port=8888
+tensorboard --logdir=/home/jwlim/hdd2/checkpoints/ --port=8888
 ```
 and visualize the training progress by opening [https://localhost:8888](https://localhost:8888) on your browser
 
@@ -20,7 +21,7 @@ and visualize the training progress by opening [https://localhost:8888](https://
 ## Pose
 For testing sequence [9]
 ```bash
-python test_kitti_pose.py --test_seq [sequence_id] --dataset-dir /home/jwlim/hdd2/poses/ --output_dir /home/jwlim/hdd2/output/ --ckpt_file /home/jwlim/hdd2/checkpoints/model_file --seq_length=3
+python test_kitti_pose.py --test_seq [sequence_id] --dataset-dir /home/jwlim/Downloads/KITTI_odomeyry/dataset/ --output_dir=/home/jwlim/hdd2/output/ --ckpt_file=/home/jwlim/hdd2/checkpoints/model_file --is_training=False --batch_size=1
 ```
 
 ---
