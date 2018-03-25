@@ -17,20 +17,21 @@ class DataLoader(object):
         self.img_width = img_width
         self.num_source = num_source
         self.num_scales = num_scales
+        self.seed = random.randint(0, 2**31 - 1)
 
     def load_train_batch(self):
         """Load a batch of training instances.
         """
-        seed = random.randint(0, 2**31 - 1)
+        #seed = random.randint(0, 2**31 - 1)
         # Load the list of training files into queues
         file_list = self.format_file_list(self.dataset_dir, 'train')
         image_paths_queue = tf.train.string_input_producer(
             file_list['image_file_list'], 
-            seed=seed, 
+            seed=self.seed, 
             shuffle=True)
         cam_paths_queue = tf.train.string_input_producer(
             file_list['cam_file_list'], 
-            seed=seed, 
+            seed=self.seed, 
             shuffle=True)
         self.steps_per_epoch = int(
             len(file_list['image_file_list'])//self.batch_size)

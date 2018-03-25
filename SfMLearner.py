@@ -9,6 +9,7 @@ from data_loader import DataLoader
 from nets import *
 from utils import *
 from capsnet import CapsNet
+from utils_caps import get_batch_data
 class SfMLearner(object):
     def __init__(self):
         self.capsnet = CapsNet()
@@ -27,15 +28,21 @@ class SfMLearner(object):
             tgt_image = self.preprocess_image(tgt_image)
             src_image_stack = self.preprocess_image(src_image_stack)
 
+        with tf.name_scope("caps_data_loading"):
+            caps_X, caps_label = get_batch_data(opt.dataset_dir, opt.capsdata_dir, opt.batch_size, loader.seed)
+
+
         with tf.name_scope("depth_prediction"):
             pred_disp, depth_net_endpoints = disp_net(tgt_image, is_training=True)
             pred_depth = [1./d for d in pred_disp]
 
         with tf.name_scope("pose_and_explainability_prediction"):
-            _, pred_poses, pred_exp_logits, pose_exp_net_endpoints = \
+            _, _, pred_poses, pred_exp_logits, pose_exp_net_endpoints = \
                 pose_exp_net(tgt_image,
                              src_image_stack,
                              self.capsnet,
+                             caps_X,
+                             caps_label,
                              do_exp=(opt.explain_reg_weight > 0),
                              is_training=True)
         
@@ -108,7 +115,7 @@ class SfMLearner(object):
                 proj_error_stack_all.append(proj_error_stack)
                 if opt.explain_reg_weight > 0:
                     exp_mask_stack_all.append(exp_mask_stack)
-            total_loss = pixel_loss + smooth_loss + exp_loss #+ self.capsnet.total_loss
+            total_loss = pixel_loss + smooth_loss + exp_loss #+ self.capsnet.capsnet_total_loss
 
         with tf.name_scope("train_op"):
             train_vars = [var for var in tf.trainable_variables()]
@@ -287,11 +294,12 @@ class SfMLearner(object):
             loader.batch_unpack_image_sequence(
                 input_mc, self.img_height, self.img_width, self.num_source)
         with tf.name_scope("pose_prediction"):
-            yaw_class, pred_poses, _, _ = pose_exp_net(
-                tgt_image, src_image_stack, self.capsnet, do_exp=False, is_training=False)
+            yaw_rate, yaw_class, pred_poses, _, _ = pose_exp_net(
+                tgt_image, src_image_stack, self.capsnet, caps_X=None, caps_label=None, do_exp=False, is_training=False)
             self.inputs = input_uint8
             self.pred_poses = pred_poses
             self.yaw_class = yaw_class
+            self.yaw_rate = yaw_rate
 
     def preprocess_image(self, image):
         # Assuming input image is uint8

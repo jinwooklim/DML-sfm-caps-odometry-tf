@@ -97,7 +97,7 @@ def get_batch_data(dataset, batch_size, num_threads):
 '''
 
 
-def get_batch_data(dataset_dir, caps_dataset_dir, batch_size):
+def get_batch_data(dataset_dir, caps_dataset_dir, batch_size, seed):
     # Load all capsdata
     file_list = sorted(glob.glob(os.path.join(caps_dataset_dir,'*.csv')))
     data_list = []
@@ -123,7 +123,7 @@ def get_batch_data(dataset_dir, caps_dataset_dir, batch_size):
     #print(np.shape(input_list))
     #exit()
     x_list = tf.stack([yaw_list, tx_list, ty_list, tz_list], axis=-1)
-    data_queues = tf.train.slice_input_producer([x_list, class_list])
+    data_queues = tf.train.slice_input_producer([x_list, class_list], seed=seed, shuffle=True)
     X, Y = tf.train.batch(data_queues, num_threads=8, 
             batch_size=batch_size,
             capacity=batch_size * 64,

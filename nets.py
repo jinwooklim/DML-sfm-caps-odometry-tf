@@ -3,11 +3,9 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from tensorflow.contrib.layers.python.layers import utils
 import numpy as np
-###
 from config import cfg
-from utils_caps import get_batch_data
 from euler_to_rotation import yaw_to_rotation
-###
+
 # Range of disparity/inverse depth values
 DISP_SCALING = 10
 MIN_DISP = 0.01
@@ -19,12 +17,11 @@ def resize_like(inputs, ref):
         return inputs
     return tf.image.resize_nearest_neighbor(inputs, [rH.value, rW.value])
 
-def pose_exp_net(tgt_image, src_image_stack, capsnet, do_exp=True, is_training=True):
+def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp=True, is_training=True):
     inputs = tf.concat([tgt_image, src_image_stack], axis=3)
     H = inputs.get_shape()[1].value
     W = inputs.get_shape()[2].value
     num_source = int(src_image_stack.get_shape()[3].value//3)
-    #print("num_source : ", num_source)
     with tf.variable_scope('pose_exp_net') as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
         with slim.arg_scope([slim.conv2d, slim.conv2d_transpose],
@@ -33,118 +30,72 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, do_exp=True, is_training=T
                             activation_fn=tf.nn.relu,
                             outputs_collections=end_points_collection):
             # cnv1 to cnv5b are shared between pose and explainability prediction
-            #print("input_shape : ", np.shape(inputs)) # (4, 128, 416, 9)
             cnv1  = slim.conv2d(inputs,16,  [7, 7], stride=2, scope='cnv1')
-            #print("cnv1_shape : ", np.shape(cnv1)) # (4, 64, 208, 16)
             cnv2  = slim.conv2d(cnv1, 32,  [5, 5], stride=2, scope='cnv2')
             cnv3  = slim.conv2d(cnv2, 64,  [3, 3], stride=2, scope='cnv3')
             cnv4  = slim.conv2d(cnv3, 128, [3, 3], stride=2, scope='cnv4')
             cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
             # Pose specific layers
             with tf.variable_scope('pose'):
-                ''' 
+                '''
                 cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
                 cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
-                # pose_pred is important to test
-                #pose_pred = slim.conv2d(cnv7, 6*1, [1, 1], scope='pred', # (4, 1, 4 ,6) 
                 pose_pred = slim.conv2d(cnv7, 6*num_source, [1, 1], scope='pred', 
                     stride=1, normalizer_fn=None, activation_fn=None)
-                #print("pose_pred : ", np.shape(pose_pred)) # (4, 1, 4, 12)
                 pose_avg = tf.reduce_mean(pose_pred, [1, 2])
-                #print("pose_avg : ", np.shape(pose_avg)) # (4, 1, 4, 12)
-                #exit()
                 # Empirically we found that scaling by a small constant 
                 # facilitates training.
                 pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
                 '''
-                #
-                # Version # 1
-                #
-                '''
-                with tf.name_scope('capsnet'):
-                    if cfg.is_training:
-                        X, labels = get_batch_data(cfg.dataset_dir, cfg.capsdata_dir, cfg.batch_size)
-                        Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
-                        capsnet_model = capsnet.model(cnv2)
-                        v_length, prediction = capsnet.predict(capsnet_model)
-                        decoded = capsnet.decoder(capsnet_model, prediction)
-                        margin_loss, reconstruction_loss, total_loss = capsnet.loss(X, Y, v_length, decoded)
-                        train_summary = capsnet.summary(decoded, margin_loss, reconstruction_loss, total_loss)
+
+                #last_cnv = slim.conv2d(cnv5, 6*num_source, [1, 1], scope='last_cnv', stride=1, normalizer_fn=None, activation_fn=None)
+                #last_cnv = slim.conv2d(cnv5, 256, [1, 1], scope='last_cnv', stride=1, padding='VALID')
+                cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
+                cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
+                last_cnv = slim.conv2d(cnv7, 256, [1, 1], scope='last_cnv', stride=1, normalizer_fn=None, activation_fn=None)
                 
-                    else:
-                        capsnet_model = capsnet.model(cnv2)
-                        _, prediction = capsnet.predict(capsnet_model)
-                        decoded = capsnet.decoder(capsnet_model, prediction)
-                    
-                    # Convert yaw to rotation
-                    tx_ty_tz = decoded[:,1:] # (4, 3)
-                    rx, ry, rz = yaw_to_rotation(decoded[:,0]*10.0) # get rx, ry, rz (4, 3)
-                    rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz]))# (4, 3)
-                    converted_decoded = tf.concat([tx_ty_tz, rx_ry_rz], 1) # (4, 6)
-                    converted_decoded = tf.reshape(converted_decoded, [cfg.batch_size, 1, 6]) # (4, 1, 6)
-                    # Make pose_pred
-                    converted_decoded = tf.stack([converted_decoded, converted_decoded], axis=1) # (4, 2, 1, 6)
-                    pose_pred = tf.reshape(converted_decoded, [cfg.batch_size, 2, 6]) # (4, 2, 6)
-                    # Finally, Make pose_final 
-                    #pose_final = 0.01 * tf.reshape(pose_pred, [cfg.batch_size, 1, 6]) # (4, 1, 6)
-                    pose_final = 0.01 * pose_pred # (4, 1, 6)
-                '''
-                #
-                # Version # 2
-                #
-                with tf.name_scope('capsnet'):
-                    if cfg.is_training:
-                        X, labels = get_batch_data(cfg.dataset_dir, cfg.capsdata_dir, cfg.batch_size)
+                with tf.variable_scope('capsnet'):
+                    if is_training == True:
+                        X = caps_X
+                        labels = caps_label
                         Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
-                        capsnet_model = capsnet.model(cnv2)
+                        capsnet_model = capsnet.model(last_cnv)
                         v_length, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
-                    
+                        margin_loss, reconstruction_loss, capsnet_total_loss = capsnet.loss(X, Y, v_length, decoded)
+                        capsnet.summary(decoded, margin_loss, reconstruction_loss, capsnet_total_loss)
                     else:
-                        capsnet_model = capsnet.model(cnv2)
+                        capsnet_model = capsnet.model(last_cnv)
                         _, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
                     
-                    # Convert yaw to rotation
-                    # [0, 1, 2, 3, 4, 5, 6, 7]
-                    # [yaw_rate, tx, ty, tz, yaw_rate2, tx2, ty2, tz2]
+                    # convert yaw to rotation
+                    # index : [0,1,2,3,4,5,6,7]
+                    # value : [yaw_rate, tx, ty, tz, yaw_rate2, tx2, ty2, tz2]
                     tx_ty_tz = decoded[:,1:4] # (4, 3)
                     tx_ty_tz2 = decoded[:,5:] # (4, 3)
-                    rx, ry, rz = yaw_to_rotation(decoded[:,0]*10.0) # get rx, ry, rz (4, 3)
-                    rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz]))# (4, 3)
-                    rx2, ry2, rz2 = yaw_to_rotation(decoded[:,4]*10.0) # get rx, ry, rz (4, 3)
-                    rx_ry_rz2 = tf.transpose(tf.stack([rx2, ry2, rz2]))# (4, 3)
+                    
+                    rx, ry, rz = yaw_to_rotation(decoded[:,0])
+                    rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz])) # (4, 3)
+
+                    rx2, ry2, rz2 = yaw_to_rotation(decoded[:,4])
+                    rx_ry_rz2 = tf.transpose(tf.stack([rx2, ry2, rz2])) # (4, 3)
+
                     converted_decoded = tf.concat([tx_ty_tz, rx_ry_rz], 1) # (4, 6)
                     converted_decoded2 = tf.concat([tx_ty_tz2, rx_ry_rz2], 1) # (4, 6)
                     converted_decoded = tf.reshape(converted_decoded, [cfg.batch_size, 1, 6]) # (4, 1, 6)
                     converted_decoded2 = tf.reshape(converted_decoded2, [cfg.batch_size, 1, 6]) # (4, 1, 6)
+
+                    #
                     # Make pose_pred
+                    #
                     stacked_converted_decoded = tf.stack([converted_decoded, converted_decoded2], axis=1) # (4, 2, 1, 6)
-                    #print("stacked_converted_decoded : ", np.shape(stacked_converted_decoded)) # (4, 8)
-                    #exit()
+
                     pose_pred = tf.reshape(stacked_converted_decoded, [cfg.batch_size, num_source, 6]) # (4, 2, 6)
-                    # Finally, Make pose_final 
-                    pose_final = 0.01 * pose_pred # (4, 2, 6)
-                '''
-                # CapsNet
-                #capsnet = CapsNet(cnv2, is_training)
-                capsnet.build_all(cnv2)
-                # pose_pred's shape = (4, 4)
-                pose_pred = capsnet.decoded
-                # Convert yaw to rotation
-                tx_ty_tz = pose_pred[:,1:] # (4, 3)
-                rx, ry, rz = yaw_to_rotation(pose_pred[:,0]*10.0) # get rx, ry, rz (4, 3)
-                rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz]))# (4, 3)
-                converted_pose_pred = tf.concat([tx_ty_tz, rx_ry_rz], 1) # (4 ,6)
-                converted_pose_pred = tf.reshape(converted_pose_pred, [cfg.batch_size, 1, 6])
-                # Finally, Make pose_final 
-                #pose_final = 0.01 * tf.reshape(pose_pred, [-1, num_source, 6]) # (4, 2, 6)
-                pose_final = 0.01 * tf.reshape(converted_pose_pred, [cfg.batch_size, 1, 6]) # (4, 2, 6)
-                '''
-                #
-                # 
-                #
-                #
+                    
+                    pose_final = 0.01 * pose_pred
+
+            
             # Exp mask specific layers
             if do_exp:
                 with tf.variable_scope('exp'):
@@ -171,7 +122,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, do_exp=True, is_training=T
                 mask3 = None
                 mask4 = None
             end_points = utils.convert_collection_to_dict(end_points_collection)
-            return prediction, pose_final, [mask1, mask2, mask3, mask4], end_points
+            return [decoded[:,0], decoded[:,4]], prediction, pose_final, [mask1, mask2, mask3, mask4], end_points
 
 def disp_net(tgt_image, is_training=True):
     H = tgt_image.get_shape()[1].value

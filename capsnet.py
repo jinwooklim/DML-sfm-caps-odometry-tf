@@ -49,24 +49,24 @@ class CapsNet():
     def conv_to_fc_0(self, u):
         """Return FC-wise contribution from conv capsules to digit capsules."""
         # Shape u for tf.matmul(W, u)
-        # reshape: [bs, 1152, 8, 1]    => [bs, 1152, 1, 8, 1]
+        # reshape: [bs, 128, 8, 1]    => [bs, 128, 1, 8, 1]
         #               ^^^^                   ^^^^^^^
-        # tile:    [bs, 1152, 1, 8, 1] => [bs, 1152, 10, 8, 1]
+        # tile:    [bs, 128, 1, 8, 1] => [bs, 128, 10, 8, 1]
         #                     ^                      ^^
         u = tf.reshape(u, [cfg.batch_size, -1, 1, 8, 1])
         u = tf.tile(u, [1, 1, cfg.num_of_class, 1, 1])
-        #assert u.get_shape() == [cfg.batch_size, 1152, 10, 8, 1]
+        #assert u.get_shape() == [cfg.batch_size, 128, 10, 8, 1]
 
-        # W: [bs, 1152, 10, 8, 16], tf.tile bach_size times
-        W = tf.get_variable('Weight', shape=[1, 18432, cfg.num_of_class, 8, 16], dtype=tf.float32,
+        # W: [bs, 128, 10, 8, 16], tf.tile bach_size times
+        W = tf.get_variable('Weight', shape=[1, 128, cfg.num_of_class, 8, 16], dtype=tf.float32,
                         initializer=tf.random_normal_initializer(stddev=cfg.stddev))
         W = tf.tile(W, [cfg.batch_size, 1, 1, 1, 1])
-        #assert W.get_shape() == [cfg.batch_size, 1152, 10, 8, 16]
+        #assert W.get_shape() == [cfg.batch_size, 128, 10, 8, 16]
 
         # Eq.2, uh
-        # [bs, 1152, 10, 8, 16].T x [bs, 1152, 10, 8, 1] => [bs, 1152, 10, 16, 1]
+        # [bs, 128, 10, 8, 16].T x [bs, 128, 10, 8, 1] => [bs, 128, 10, 16, 1]
         uh = tf.matmul(W, u, transpose_a=True)
-        #assert uh.get_shape() == [cfg.batch_size, 1152, 10, 16, 1]
+        #assert uh.get_shape() == [cfg.batch_size, 128, 10, 16, 1]
         return uh
 
 
@@ -75,10 +75,10 @@ class CapsNet():
         # In forward (inner iterations), uh_stopped = uh.
         # In backward, no gradient passed back from uh_stopped to uh.
         uh_stopped = tf.stop_gradient(uh, name='stop_gradient')
-        b = tf.zeros([cfg.batch_size, uh.shape[1].value, num_outputs, 1, 1])  # b: [bs, 1152, 10, 1, 1]
+        b = tf.zeros([cfg.batch_size, uh.shape[1].value, num_outputs, 1, 1])  # b: [bs, 128, 10, 1, 1]
         for r_iter in range(cfg.iter_routing):
             with tf.variable_scope('iter_' + str(r_iter)):
-                c = tf.nn.softmax(b, dim=2)  # [bs, 1152, 10, 1, 1]
+                c = tf.nn.softmax(b, dim=2)  # [bs, 128, 10, 1, 1]
                 # At last iteration, use `uh` in order to receive gradients from the following graph
                 if r_iter == cfg.iter_routing - 1:
                     # weighting uh with c, element-wise in the last two dims
@@ -89,11 +89,11 @@ class CapsNet():
                     # Inner iterations, do not apply backpropagation
                     s = tf.reduce_sum(tf.multiply(c, uh_stopped), axis=1, keep_dims=True)
                     v = self.squash(s)
-                    # tile from [batch_size ,1, 10, 16, 1] to [batch_size, 1152, 10, 16, 1]
+                    # tile from [batch_size ,1, 10, 16, 1] to [batch_size, 128, 10, 16, 1]
                     # for matmul, in the last two dim: [16, 1].T x [16, 1] => [1, 1]
-                    v_tiled = tf.tile(v, [1, 18432, 1, 1, 1])
+                    v_tiled = tf.tile(v, [1, 128, 1, 1, 1])
                     uh_produce_v = tf.matmul(uh_stopped, v_tiled, transpose_a=True)  # Agreement
-                    #assert uh_produce_v.get_shape() == [cfg.batch_size, 1152, 10, 1, 1]
+                    #assert uh_produce_v.get_shape() == [cfg.batch_size, 128, 10, 1, 1]
                     b += uh_produce_v
         return(v)
 
@@ -112,7 +112,8 @@ class CapsNet():
             #                                 padding='VALID')
             #assert conv1.get_shape() == [cfg.batch_size, 20, 20, 256]
         with tf.variable_scope('PrimaryCaps'):
-            caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=9, stride=2, vec_len=8)
+            #caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=9, stride=2, vec_len=8)
+            caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=1, stride=1, vec_len=8)
         with tf.variable_scope('DigitCaps'):
             caps2 = self.fc_caps(caps1, num_outputs=cfg.num_of_class, vec_len=16)
         return caps2
@@ -174,17 +175,18 @@ class CapsNet():
         margin_loss = tf.reduce_mean(tf.reduce_sum(L, axis=1))
 
         # 2. Reconstruction loss
-        orgin = tf.reshape(X, shape=(cfg.batch_size, -1))
-        squared = tf.square(decoded - orgin)
+        orgin = tf.reshape(X, shape=(cfg.batch_size, -1)) # 4x4
+        orgin = tf.concat([orgin, orgin], 1) # 4x8
+        squared = tf.square(decoded - orgin) # 4x8 - 4x8
         reconstruction_loss = tf.reduce_mean(squared)
 
         # 3. Total loss
         # The paper uses sum of squared error as reconstruction error, but we have
         # used reduce_mean to calculate MSE.  In order to keep in line with the
         # paper, the regularization scale should be 0.0005*784=0.392
-        self.total_loss = margin_loss + cfg.regularization_scale * reconstruction_loss
+        self.capsnet_total_loss = margin_loss + cfg.regularization_scale * reconstruction_loss
 
-        return margin_loss, reconstruction_loss, self.total_loss
+        return margin_loss, reconstruction_loss, self.capsnet_total_loss
 
 
     def train_op(self, total_loss, global_step):
@@ -193,16 +195,16 @@ class CapsNet():
         return optimizer.minimize(total_loss, global_step=global_step)
 
 
-    def summary(self, decoded, margin_loss, reconstruction_loss, total_loss):
+    def summary(self, decoded, margin_loss, reconstruction_loss, capsnet_total_loss):
         """Return train summary."""
         train_summary = []
         train_summary.append(tf.summary.scalar('train/margin_loss', margin_loss))
         train_summary.append(tf.summary.scalar('train/reconstruction_loss', reconstruction_loss))
-        train_summary.append(tf.summary.scalar('train/total_loss', total_loss))
+        train_summary.append(tf.summary.scalar('train/capsnet_total_loss', capsnet_total_loss))
         #recon_img = tf.reshape(decoded, shape=(cfg.batch_size, 28, 28, 1))
         #train_summary.append(tf.summary.image('reconstruction_img', recon_img))
-        train_summary = tf.summary.merge(train_summary)
-        return train_summary
+        self.train_summary = tf.summary.merge(train_summary)
+        return self.train_summary
 
 
     def accuracy(self, labels, prediction):

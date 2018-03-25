@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "train.py", line 6, in <module>
+    from SfMLearner import SfMLearner
+  File "/home/jwlim/MyProject/Smartcar/SfMLearner.py", line 9, in <module>
+    from nets import *
+ImportError: No module named 'nets'
