@@ -6,6 +6,7 @@ Modifications are;
 """
 import tensorflow as tf
 from config import cfg
+from euler_to_rotation import yaw_to_rotation
 epsilon = 1e-9
 
 
@@ -49,24 +50,24 @@ class CapsNet():
     def conv_to_fc_0(self, u):
         """Return FC-wise contribution from conv capsules to digit capsules."""
         # Shape u for tf.matmul(W, u)
-        # reshape: [bs, 128, 8, 1]    => [bs, 128, 1, 8, 1]
+        # reshape: [bs, 2816, 8, 1]    => [bs, 2816, 1, 8, 1]
         #               ^^^^                   ^^^^^^^
-        # tile:    [bs, 128, 1, 8, 1] => [bs, 128, 10, 8, 1]
+        # tile:    [bs, 2816, 1, 8, 1] => [bs, 2816, 10, 8, 1]
         #                     ^                      ^^
         u = tf.reshape(u, [cfg.batch_size, -1, 1, 8, 1])
         u = tf.tile(u, [1, 1, cfg.num_of_class, 1, 1])
-        #assert u.get_shape() == [cfg.batch_size, 128, 10, 8, 1]
+        #assert u.get_shape() == [cfg.batch_size, 2816, 10, 8, 1]
 
-        # W: [bs, 128, 10, 8, 16], tf.tile bach_size times
-        W = tf.get_variable('Weight', shape=[1, 128, cfg.num_of_class, 8, 16], dtype=tf.float32,
+        # W: [bs, 2816, 10, 8, 16], tf.tile bach_size times
+        W = tf.get_variable('Weight', shape=[1, 2816, cfg.num_of_class, 8, 16], dtype=tf.float32,
                         initializer=tf.random_normal_initializer(stddev=cfg.stddev))
         W = tf.tile(W, [cfg.batch_size, 1, 1, 1, 1])
-        #assert W.get_shape() == [cfg.batch_size, 128, 10, 8, 16]
+        #assert W.get_shape() == [cfg.batch_size, 2816, 10, 8, 16]
 
         # Eq.2, uh
-        # [bs, 128, 10, 8, 16].T x [bs, 128, 10, 8, 1] => [bs, 128, 10, 16, 1]
+        # [bs, 2816, 10, 8, 16].T x [bs, 2816, 10, 8, 1] => [bs, 2816, 10, 16, 1]
         uh = tf.matmul(W, u, transpose_a=True)
-        #assert uh.get_shape() == [cfg.batch_size, 128, 10, 16, 1]
+        #assert uh.get_shape() == [cfg.batch_size, 2816, 10, 16, 1]
         return uh
 
 
@@ -75,10 +76,10 @@ class CapsNet():
         # In forward (inner iterations), uh_stopped = uh.
         # In backward, no gradient passed back from uh_stopped to uh.
         uh_stopped = tf.stop_gradient(uh, name='stop_gradient')
-        b = tf.zeros([cfg.batch_size, uh.shape[1].value, num_outputs, 1, 1])  # b: [bs, 128, 10, 1, 1]
+        b = tf.zeros([cfg.batch_size, uh.shape[1].value, num_outputs, 1, 1])  # b: [bs, 2816, 10, 1, 1]
         for r_iter in range(cfg.iter_routing):
             with tf.variable_scope('iter_' + str(r_iter)):
-                c = tf.nn.softmax(b, dim=2)  # [bs, 128, 10, 1, 1]
+                c = tf.nn.softmax(b, dim=2)  # [bs, 2816, 10, 1, 1]
                 # At last iteration, use `uh` in order to receive gradients from the following graph
                 if r_iter == cfg.iter_routing - 1:
                     # weighting uh with c, element-wise in the last two dims
@@ -89,11 +90,11 @@ class CapsNet():
                     # Inner iterations, do not apply backpropagation
                     s = tf.reduce_sum(tf.multiply(c, uh_stopped), axis=1, keep_dims=True)
                     v = self.squash(s)
-                    # tile from [batch_size ,1, 10, 16, 1] to [batch_size, 128, 10, 16, 1]
+                    # tile from [batch_size ,1, 10, 16, 1] to [batch_size, 2816, 10, 16, 1]
                     # for matmul, in the last two dim: [16, 1].T x [16, 1] => [1, 1]
-                    v_tiled = tf.tile(v, [1, 128, 1, 1, 1])
+                    v_tiled = tf.tile(v, [1, 2816, 1, 1, 1])
                     uh_produce_v = tf.matmul(uh_stopped, v_tiled, transpose_a=True)  # Agreement
-                    #assert uh_produce_v.get_shape() == [cfg.batch_size, 128, 10, 1, 1]
+                    #assert uh_produce_v.get_shape() == [cfg.batch_size, 2816, 10, 1, 1]
                     b += uh_produce_v
         return(v)
 
@@ -103,7 +104,8 @@ class CapsNet():
     #
 
 
-    def model(self, conv1):
+    def model(self, conv1, num_source):
+        self.num_source = num_source
         """Return capsule network for MNIST."""
         with tf.variable_scope('Conv1_layer'):
             pass
@@ -113,7 +115,7 @@ class CapsNet():
             #assert conv1.get_shape() == [cfg.batch_size, 20, 20, 256]
         with tf.variable_scope('PrimaryCaps'):
             #caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=9, stride=2, vec_len=8)
-            caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=1, stride=1, vec_len=8)
+            caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=9, stride=2, vec_len=8)
         with tf.variable_scope('DigitCaps'):
             caps2 = self.fc_caps(caps1, num_outputs=cfg.num_of_class, vec_len=16)
         return caps2
@@ -151,8 +153,7 @@ class CapsNet():
             fc1 = tf.contrib.layers.fully_connected(v, num_outputs=512)
             fc2 = tf.contrib.layers.fully_connected(fc1, num_outputs=1024)
             assert fc2.get_shape() == [cfg.batch_size, 1024]
-            fc3 = tf.contrib.layers.fully_connected(fc2, num_outputs=256)
-            self.decoded = tf.contrib.layers.fully_connected(fc3, num_outputs=8, activation_fn=tf.sigmoid)
+            self.decoded = tf.contrib.layers.fully_connected(fc2, num_outputs=(self.num_source * 6 * cfg.batch_size), activation_fn=tf.sigmoid)
             return self.decoded
 
 
@@ -175,9 +176,20 @@ class CapsNet():
         margin_loss = tf.reduce_mean(tf.reduce_sum(L, axis=1))
 
         # 2. Reconstruction loss
-        orgin = tf.reshape(X, shape=(cfg.batch_size, -1)) # 4x4
-        orgin = tf.concat([orgin, orgin], 1) # 4x8
-        squared = tf.square(decoded - orgin) # 4x8 - 4x8
+        origin = tf.reshape(X, shape=(cfg.batch_size, -1)) # 4x4
+        rx, ry, rz = yaw_to_rotation(origin[:,0])
+        rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz])) # 4x3
+        origin = tf.concat([rx_ry_rz, origin[:,1:]], 1) # 4x6
+        temp = origin
+        #print("decoded : ", decoded.get_shape())
+        #print("before_origin : ", origin.get_shape())
+        for i in range((cfg.batch_size*self.num_source)-1):
+            origin = tf.concat([origin, temp], 1)
+        #print("after_origin : ", origin.get_shape())
+        squared = tf.square(decoded - origin) # 4x(6*num_source) - 4x(6*num_source)
+        
+        #origin = tf.concat([origin, origin], 1) # 4x8
+        #squared = tf.square(decoded - origin) # 4x8 - 4x8
         reconstruction_loss = tf.reduce_mean(squared)
 
         # 3. Total loss

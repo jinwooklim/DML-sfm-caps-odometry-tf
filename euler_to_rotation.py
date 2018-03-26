@@ -13,12 +13,29 @@ def yaw_to_rotation(yaw):
         ])
     '''
 
-    yawMatrix = np.array([[tf.cos(yaw), -tf.sin(yaw), tf.constant(0.0)],
+    roll = 0.0
+    pitch = 0.0
+
+    yawMatrix = np.array([
+        [tf.cos(yaw), -tf.sin(yaw), 0.0],
         [tf.sin(yaw), tf.cos(yaw), 0.0],
         [0.0, 0.0, 0.1]
         ])
 
-    R = yawMatrix
+    pitchMatrix = np.array([
+        [tf.cos(pitch), 0.0, tf.sin(pitch)],
+        [0.0, 1.0, 0.0],
+        [-tf.sin(pitch), 0.0, tf.cos(pitch)]
+        ])
+
+    rollMatrix = np.array([
+        [1.0, 0.0, 0.0],
+        [0.0, tf.cos(roll), -tf.sin(roll)],
+        [0.0, tf.sin(roll), tf.cos(roll)],
+        ])
+
+    R = yawMatrix * pitchMatrix * rollMatrix
+
     theta = tf.acos(((R[0, 0] + R[1, 1] + R[2, 2]) - 1) / 2)
     multi = 1 / (2 * tf.sin(theta))
 
