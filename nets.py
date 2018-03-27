@@ -138,34 +138,26 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                 #
                 # Version 3
                 #
+                cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
+                #cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
                 with tf.variable_scope('capsnet'):
                     if is_training == True:
                         X = caps_X
                         labels = caps_label
                         Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
-                        capsnet_model = capsnet.model(cnv5, num_source)
+                        capsnet_model = capsnet.model(cnv6, num_source)
                         v_length, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
                         margin_loss, reconstruction_loss, capsnet_total_loss = capsnet.loss(X, Y, v_length, decoded)
                         capsnet.summary(decoded, margin_loss, reconstruction_loss, capsnet_total_loss)
                     else:
-                        capsnet_model = capsnet.model(cnv5, num_source)
+                        capsnet_model = capsnet.model(cnv6, num_source)
                         _, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
                
-                    decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,4)
-                    print("decoded : ", decoded.get_shape())
+                    decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
                     
-                    rx, ry, rz = yaw_to_rotation(decoded[:,:,0])
-                    rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz])) # (batch_size, num_source, 3), (4,4,3)
-                    print("rx_ry_rz : ", rx_ry_rz.get_shape())
-
-                    pose_pred = tf.concat([rx_ry_rz, decoded[:,:,1:]], 2)
-                    print("pose_pred : ", pose_pred.get_shape())
-                    
-                    # Empirically we found that scaling by a small constant 
-                    # facilitates training.
-                    pose_final = pose_pred
+                    pose_final = 0.01 * decoded
                     print("pose_final : ", pose_final.get_shape())
 
                 #exit()
