@@ -37,7 +37,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
             cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
             # Pose specific layers
             with tf.variable_scope('pose'):
-                '''
+                ''' 
                 cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
                 cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
                 pose_pred = slim.conv2d(cnv7, 6*num_source, [1, 1], scope='pred', stride=1, normalizer_fn=None, activation_fn=None)
@@ -51,6 +51,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                 print("pose_final : ", pose_final.get_shape())
             
                 prediction = 5
+                exit()
                 '''
                 #
                 # Version # 1
@@ -108,33 +109,66 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                 #
                 # Version 2
                 #
-                 
+                ''' 
                 with tf.variable_scope('capsnet'):
                     if is_training == True:
                         X = caps_X
                         labels = caps_label
                         Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
-                        capsnet_model = capsnet.model(cnv3, num_source)
+                        capsnet_model = capsnet.model(cnv5, num_source)
                         v_length, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
                         margin_loss, reconstruction_loss, capsnet_total_loss = capsnet.loss(X, Y, v_length, decoded)
                         capsnet.summary(decoded, margin_loss, reconstruction_loss, capsnet_total_loss)
                     else:
-                        capsnet_model = capsnet.model(cnv3, num_source)
+                        capsnet_model = capsnet.model(cnv5, num_source)
                         _, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
                 
                     pose_pred = decoded # [batch_size, 1, 4, num_source * 6]
                     pose_avg = tf.reduce_mean(pose_pred, 0) # [batch_size, num_source * 6]
-                    print("pose_pred : ", pose_pred.get_shape())
+                    print("pose_pred : ", DISP_SCALINGose_pred.get_shape())
                     print("pose_avg : ", pose_avg.get_shape())
                 
                     # Empirically we found that scaling by a small constant 
                     # facilitates training.
                     pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
                     print("pose_final : ", pose_final.get_shape())
-                
-            #exit()
+                '''
+                #
+                # Version 3
+                #
+                with tf.variable_scope('capsnet'):
+                    if is_training == True:
+                        X = caps_X
+                        labels = caps_label
+                        Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
+                        capsnet_model = capsnet.model(cnv5, num_source)
+                        v_length, prediction = capsnet.predict(capsnet_model)
+                        decoded = capsnet.decoder(capsnet_model, prediction)
+                        margin_loss, reconstruction_loss, capsnet_total_loss = capsnet.loss(X, Y, v_length, decoded)
+                        capsnet.summary(decoded, margin_loss, reconstruction_loss, capsnet_total_loss)
+                    else:
+                        capsnet_model = capsnet.model(cnv5, num_source)
+                        _, prediction = capsnet.predict(capsnet_model)
+                        decoded = capsnet.decoder(capsnet_model, prediction)
+               
+                    decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,4)
+                    print("decoded : ", decoded.get_shape())
+                    
+                    rx, ry, rz = yaw_to_rotation(decoded[:,:,0])
+                    rx_ry_rz = tf.transpose(tf.stack([rx, ry, rz])) # (batch_size, num_source, 3), (4,4,3)
+                    print("rx_ry_rz : ", rx_ry_rz.get_shape())
+
+                    pose_pred = tf.concat([rx_ry_rz, decoded[:,:,1:]], 2)
+                    print("pose_pred : ", pose_pred.get_shape())
+                    
+                    # Empirically we found that scaling by a small constant 
+                    # facilitates training.
+                    pose_final = pose_pred
+                    print("pose_final : ", pose_final.get_shape())
+
+                #exit()
             
             # Exp mask specific layers
             if do_exp:
