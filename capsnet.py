@@ -196,7 +196,7 @@ class CapsNet():
         reconstruction_loss = tf.reduce_mean(squared)
         '''
 
-        origin = tf.reshape(X, shape=(cfg.batch_size, -1)) # (batch_size, 4)
+        origin = tf.reshape(X, shape=(cfg.batch_size, -1)) # (batch_size, 6)
         decoded = tf.reshape(decoded, shape=(cfg.batch_size, self.num_source, -1))
         print("#1 decoded : ", decoded.get_shape()) 
         rz = tf.reshape(decoded[:,:,-1], shape=(cfg.batch_size, self.num_source, 1))

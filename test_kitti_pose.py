@@ -10,6 +10,7 @@ from SfMLearner import SfMLearner
 from kitti_eval.pose_evaluation_utils import dump_pose_seq_TUM
 from kitti_eval.pose_evaluation_utils import dump_yawclass_pose_seq_TUM
 from config import cfg
+import pandas as pd
 '''
 flags = tf.app.flags
 flags.DEFINE_integer("batch_size", 1, "The size of of a sample batch")
@@ -74,6 +75,8 @@ def main():
         times = f.readlines()
     times = np.array([float(s[:-1]) for s in times])
     max_src_offset = (cfg.seq_length - 1)//2
+    yaw_class_list = []
+    tgt_list = []
     with tf.Session() as sess:
         saver.restore(sess, cfg.ckpt_file)
         for tgt_idx in range(N):
@@ -93,13 +96,20 @@ def main():
             pred_yaw_class = pred['yaw_class'][0]
             # Insert the target pose [0, 0, 0, 0, 0, 0] 
             pred_poses = np.insert(pred_poses, max_src_offset, np.zeros((1,6)), axis=0)
-            print("pred_poses : " , pred_poses)
-            print("pred_yaw_class : " , pred_yaw_class)
+            ##print("pred_poses : " , pred_poses)
+            ##print("pred_yaw_class : " , pred_yaw_class)
+            yaw_class_list.append(pred_yaw_class)
+            tgt_list.append(tgt_idx)
             curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset + 1]
             #curr_times = times[tgt_idx - max_src_offset:tgt_idx + max_src_offset]
-            print("times : " , curr_times)
+            ##print("times : " , curr_times)
             out_file = cfg.output_dir + '%.6d.txt' % (tgt_idx - max_src_offset)
             dump_pose_seq_TUM(out_file, pred_poses, curr_times)
             #dump_yawclass_pose_seq_TUM(out_file, pred_poses, pred_yaw_class, curr_times)
+    result = {'target':tgt_list, 'class':yaw_class_list}
+    result = pd.DataFrame(result)
+    result = result.set_index('target')
+    result.to_csv("result.csv", header=None)
 
+    
 main()
