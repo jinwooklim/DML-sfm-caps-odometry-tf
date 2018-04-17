@@ -45,6 +45,7 @@ def main(_):
         
     sfm = SfMLearner()
     #sfm.train(FLAGS)
+    cfg.num_source = cfg.seq_length - 1
     sfm.train(cfg)
 
 if __name__ == '__main__':

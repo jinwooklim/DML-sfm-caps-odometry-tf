@@ -153,13 +153,20 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                     else:
                         capsnet_model = capsnet.model(cnv6, num_source)
                         _, prediction = capsnet.predict(capsnet_model)
-                        decoded = capsnet.decoder(capsnet_model, prediction)
-               
-                    decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
+                        decoded = capsnet.decoder(capsnet_model, prediction) # (4, 24)
+                    #decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
+                    #pose_final = 0.01 * decoded
                     
-                    pose_final = 0.01 * decoded
-                    print("pose_final : ", pose_final.get_shape())
+                    with tf.name_scope('weights'):
+                        regression_w = tf.get_variable('regression_w', shape=[24, 24], dtype=tf.float32)
 
+                    with tf.name_scope('biases'):
+                        regression_b = tf.get_variable('regression_b', shape=[24], dtype=tf.float32)
+                    
+                    with tf.name_scope('Wx_plus_b'):
+                        decoded = tf.nn.xw_plus_b(decoded, regression_w, regression_b) # (4,4,6)
+                        pose_final = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1))   
+                        print("pose_final : ", np.shape(pose_final))
                 #exit()
             
             # Exp mask specific layers

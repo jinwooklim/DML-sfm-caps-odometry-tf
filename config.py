@@ -29,11 +29,13 @@ flags.DEFINE_integer("img_height", 128, "Image height")
 flags.DEFINE_integer("img_width", 416, "Image width")
 #flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
 flags.DEFINE_integer("seq_length", 5, "Sequence length for each example")
+flags.DEFINE_integer("num_source", 4, "Must Be : num_source == seq_length - 1")
+flags.DEFINE_integer("num_scales", 4, "number of scales")
 #flags.DEFINE_integer("max_steps", 200000, "Maximum number of training iterations")
-flags.DEFINE_integer("max_steps", 20000, "Maximum number of training iterations")
+flags.DEFINE_integer("max_steps", 200000, "Maximum number of training iterations")
 #flags.DEFINE_integer("max_steps", 10000, "Maximum number of training iterations")
 flags.DEFINE_integer("summary_freq", 100, "Logging every log_freq iterations")
-flags.DEFINE_integer("save_latest_freq", 100, \
+flags.DEFINE_integer("save_latest_freq", 1000, \
     "Save the latest model every save_latest_freq iterations (overwrites the previous latest model)")
 flags.DEFINE_boolean("continue_train", False, "Continue training from previous checkpoint")
 ############################################################
