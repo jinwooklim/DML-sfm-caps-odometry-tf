@@ -221,9 +221,8 @@ class SfMLearner(object):
         #self.saver = tf.train.Saver([var for var in tf.model_variables()] + \
         #                            [self.global_step],
         #                             max_to_keep=10)
-        self.sv = tf.train.Supervisor(logdir=opt.checkpoint_dir, 
-                                 save_summaries_secs=0)
-                                 #saver=None)
+        self.sv = tf.train.Supervisor(logdir=opt.checkpoint_dir)
+        
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         with self.sv.managed_session(config=config) as sess:

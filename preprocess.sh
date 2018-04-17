@@ -1,0 +1,1 @@
+python data/prepare_train_data.py --dataset_dir=/home/jwlim/Downloads/KITTI_odometry/dataset/ --dataset_name='kitti_odom' --dump_root=/home/jwlim/hdd2/formatted_odom/ --seq_length=3 --img_width=416 --img_height=128 --num_threads=4

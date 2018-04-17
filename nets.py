@@ -155,16 +155,22 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                         _, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction) # (4, 24)
                     #decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
+                    print("#3 decoded : ", np.shape(decoded))
+                    print("#4 decoded : ", np.shape(decoded)[-1])
                     #pose_final = 0.01 * decoded
                     
                     with tf.name_scope('weights'):
-                        regression_w = tf.get_variable('regression_w', shape=[24, 24], dtype=tf.float32)
+                        #regression_w = tf.get_variable('regression_w', shape=[24, 24], dtype=tf.float32)
+                        #regression_w = tf.get_variable('regression_w', shape=[12, 12], dtype=tf.float32)
+                        regression_w = tf.get_variable('regression_w', shape=[np.shape(decoded)[-1], np.shape(decoded)[-1]], dtype=tf.float32)
 
                     with tf.name_scope('biases'):
-                        regression_b = tf.get_variable('regression_b', shape=[24], dtype=tf.float32)
+                        #regression_b = tf.get_variable('regression_b', shape=[24], dtype=tf.float32)
+                        #regression_b = tf.get_variable('regression_b', shape=[12], dtype=tf.float32)
+                        regression_b = tf.get_variable('regression_b', shape=[np.shape(decoded)[-1]], dtype=tf.float32)
                     
                     with tf.name_scope('Wx_plus_b'):
-                        decoded = tf.nn.xw_plus_b(decoded, regression_w, regression_b) # (4,4,6)
+                        decoded = tf.nn.xw_plus_b(decoded, regression_w, regression_b) # (4,4,6), (4,2,6)
                         pose_final = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1))   
                         print("pose_final : ", np.shape(pose_final))
                 #exit()
