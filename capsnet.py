@@ -50,24 +50,24 @@ class CapsNet():
     def conv_to_fc_0(self, u):
         """Return FC-wise contribution from conv capsules to digit capsules."""
         # Shape u for tf.matmul(W, u)
-        # reshape: [bs, 192, 8, 1]    => [bs, 192, 1, 8, 1]
+        # reshape: [bs, 2816, 8, 1]    => [bs, 192, 1, 8, 1]
         #               ^^^^                   ^^^^^^^
-        # tile:    [bs, 192, 1, 8, 1] => [bs, 192, 10, 8, 1]
+        # tile:    [bs, 2816, 1, 8, 1] => [bs, 192, 10, 8, 1]
         #                     ^                      ^^
         u = tf.reshape(u, [cfg.batch_size, -1, 1, 8, 1])
         u = tf.tile(u, [1, 1, cfg.num_of_class, 1, 1])
-        #assert u.get_shape() == [cfg.batch_size, 192, 10, 8, 1]
+        #assert u.get_shape() == [cfg.batch_size, 2816, 10, 8, 1]
 
-        # W: [bs, 192, 10, 8, 16], tf.tile bach_size times
-        W = tf.get_variable('Weight', shape=[1, 192, cfg.num_of_class, 8, 16], dtype=tf.float32,
+        # W: [bs, 2816, 10, 8, 1], tf.tile bach_size times
+        W = tf.get_variable('Weight', shape=[1, 2816, cfg.num_of_class, 8, 1], dtype=tf.float32,
                         initializer=tf.random_normal_initializer(stddev=cfg.stddev))
         W = tf.tile(W, [cfg.batch_size, 1, 1, 1, 1])
-        #assert W.get_shape() == [cfg.batch_size, 192, 10, 8, 16]
+        #assert W.get_shape() == [cfg.batch_size, 2816, 10, 8, 1]
 
         # Eq.2, uh
-        # [bs, 192, 10, 8, 16].T x [bs, 192, 10, 8, 1] => [bs, 192, 10, 16, 1]
+        # [bs, 2816, 10, 8, 1].T x [bs, 192, 10, 8, 1] => [bs, 192, 10, 16, 1]
         uh = tf.matmul(W, u, transpose_a=True)
-        #assert uh.get_shape() == [cfg.batch_size, 192, 10, 16, 1]
+        #assert uh.get_shape() == [cfg.batch_size, 2816, 10, 1, 1]
         return uh
 
 
@@ -76,25 +76,25 @@ class CapsNet():
         # In forward (inner iterations), uh_stopped = uh.
         # In backward, no gradient passed back from uh_stopped to uh.
         uh_stopped = tf.stop_gradient(uh, name='stop_gradient')
-        b = tf.zeros([cfg.batch_size, uh.shape[1].value, num_outputs, 1, 1])  # b: [bs, 192, 10, 1, 1]
+        b = tf.zeros([cfg.batch_size, uh.shape[1].value, num_outputs, 1, 1])  # b: [bs, 2816, 10, 1, 1]
         for r_iter in range(cfg.iter_routing):
             with tf.variable_scope('iter_' + str(r_iter)):
-                c = tf.nn.softmax(b, dim=2)  # [bs, 192, 10, 1, 1]
+                c = tf.nn.softmax(b, dim=2)  # [bs, 2816, 10, 1, 1]
                 # At last iteration, use `uh` in order to receive gradients from the following graph
                 if r_iter == cfg.iter_routing - 1:
                     # weighting uh with c, element-wise in the last two dims
                     s = tf.reduce_sum(tf.multiply(c, uh), axis=1, keep_dims=True)
                     v = self.squash(s)
-                    #assert v.get_shape() == [cfg.batch_size, 1, 10, 16, 1]
+                    #assert v.get_shape() == [cfg.batch_size, 1, 10, 1, 1]
                 elif r_iter < cfg.iter_routing - 1:
                     # Inner iterations, do not apply backpropagation
                     s = tf.reduce_sum(tf.multiply(c, uh_stopped), axis=1, keep_dims=True)
                     v = self.squash(s)
-                    # tile from [batch_size ,1, 10, 16, 1] to [batch_size, 192, 10, 16, 1]
-                    # for matmul, in the last two dim: [16, 1].T x [16, 1] => [1, 1]
-                    v_tiled = tf.tile(v, [1, 192, 1, 1, 1])
+                    # tile from [batch_size ,1, 10, 1, 1] to [batch_size, 2816, 10, 16, 1]
+                    # for matmul, in the last two dim: [1, 1].T x [16, 1] => [1, 1]
+                    v_tiled = tf.tile(v, [1, 2816, 1, 1, 1])
                     uh_produce_v = tf.matmul(uh_stopped, v_tiled, transpose_a=True)  # Agreement
-                    #assert uh_produce_v.get_shape() == [cfg.batch_size, 192, 10, 1, 1]
+                    #assert uh_produce_v.get_shape() == [cfg.batch_size, 2816, 10, 1, 1]
                     b += uh_produce_v
         return(v)
 
@@ -108,23 +108,24 @@ class CapsNet():
         self.num_source = num_source
         """Return capsule network for MNIST."""
         with tf.variable_scope('Conv1_layer'):
+            print("caps_conv1 : ", conv1.get_shape())
             pass
             #conv1 = tf.contrib.layers.conv2d(X, num_outputs=256,
             #                                 kernel_size=9, stride=1,
             #                                 padding='VALID')
             #assert conv1.get_shape() == [cfg.batch_size, 20, 20, 256]
         with tf.variable_scope('PrimaryCaps'):
-            #caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=9, stride=2, vec_len=8)
-            caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=2, stride=1, vec_len=8)
+            caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=9, stride=2, vec_len=8)
+            #caps1 = self.conv_caps(conv1, num_outputs=32, kernel_size=2, stride=1, vec_len=8)
         with tf.variable_scope('DigitCaps'):
-            caps2 = self.fc_caps(caps1, num_outputs=cfg.num_of_class, vec_len=16)
+            caps2 = self.fc_caps(caps1, num_outputs=cfg.num_of_class, vec_len=1)
         return caps2
 
 
     def predict(self, caps2):
         """Return prediction with argmax."""
         with tf.variable_scope('Prediction'):
-            # softmax(|v|), where v: [bs, 10, 16, 1]
+            # softmax(|v|), where v: [bs, 10, 1, 1]
             v_length = tf.sqrt(tf.reduce_sum(tf.square(caps2), axis=2, keep_dims=True) + epsilon)
             assert v_length.get_shape() == [cfg.batch_size, cfg.num_of_class, 1, 1]
             softmax_v = tf.nn.softmax(v_length, dim=1)
@@ -142,14 +143,14 @@ class CapsNet():
             # batch size of predictions (labels)
             candid = []
             for index in range(cfg.batch_size):
-                v = caps2[index][prediction[index], :]  # [16, 1]
-                candid.append(tf.reshape(v, shape=(1, 1, 16, 1)))
+                v = caps2[index][prediction[index], :]  # [1, 1]
+                candid.append(tf.reshape(v, shape=(1, 1, 1, 1)))
             candid = tf.concat(candid, axis=0)
-            assert candid.get_shape() == [cfg.batch_size, 1, 16, 1]
+            assert candid.get_shape() == [cfg.batch_size, 1, 1, 1]
 
         # Reconstruct batch size of images with 3 FC layers
         with tf.variable_scope('Decoder'):
-            v = tf.reshape(candid, shape=(cfg.batch_size, -1))  # [bs, 1, 16, 1] => [bs, 16]
+            v = tf.reshape(candid, shape=(cfg.batch_size, -1))  # [bs, 1, 1, 1] => [bs, 16]
             fc1 = tf.contrib.layers.fully_connected(v, num_outputs=512)
             fc2 = tf.contrib.layers.fully_connected(fc1, num_outputs=1024)
             assert fc2.get_shape() == [cfg.batch_size, 1024]

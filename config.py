@@ -21,8 +21,10 @@ flags.DEFINE_string('checkpoint_dir', "/home/jwlim/hdd2/checkpoints_seq3/", "Dir
 flags.DEFINE_string("init_checkpoint_file", None, "Specific checkpoint file to initialize from")
 flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam")
 flags.DEFINE_float("beta1", 0.9, "Momentum term of adam")
+flags.DEFINE_float("beta2", 0.9999, "Momentum term of adam2")
 flags.DEFINE_float("smooth_weight", 0.5, "Weight for smoothness")
-flags.DEFINE_float("explain_reg_weight", 0.0, "Weight for explanability regularization")
+#flags.DEFINE_float("explain_reg_weight", 0.0, "Weight for explanability regularization")
+flags.DEFINE_float("explain_reg_weight", 0.2, "Weight for explanability regularization")
 flags.DEFINE_integer("batch_size", 4, "The size of of a sample batch")
 #flags.DEFINE_integer("batch_size", 8, "The size of of a sample batch")
 flags.DEFINE_integer("img_height", 128, "Image height")
@@ -30,8 +32,8 @@ flags.DEFINE_integer("img_width", 416, "Image width")
 flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
 flags.DEFINE_integer("num_source", 2, "Must Be : num_source == seq_length - 1")
 flags.DEFINE_integer("num_scales", 4, "number of scales")
-#flags.DEFINE_integer("max_steps", 200000, "Maximum number of training iterations")
-flags.DEFINE_integer("max_steps", 20000, "Maximum number of training iterations")
+flags.DEFINE_integer("max_steps", 150000, "Maximum number of training iterations")
+#flags.DEFINE_integer("max_steps", 20000, "Maximum number of training iterations")
 #flags.DEFINE_integer("max_steps", 10000, "Maximum number of training iterations")
 flags.DEFINE_integer("summary_freq", 100, "Logging every log_freq iterations")
 flags.DEFINE_integer("save_latest_freq", 1000, \
@@ -62,7 +64,7 @@ flags.DEFINE_boolean('mask_with_y', True, 'use the true label to mask out target
 
 flags.DEFINE_float('stddev', 0.01, 'stddev for W initializer')
 #flags.DEFINE_float('regularization_scale', 0.392, 'regularization coefficient for reconstruction loss, default to 0.0005*784=0.392')
-flags.DEFINE_float('regularization_scale', 26.624, 'regularization coefficient for reconstruction loss, default to 0.0005*128*416=26.624')
+flags.DEFINE_float('regularization_scale', 0.416, 'regularization coefficient for reconstruction loss, default to 0.0005*16*42=0.416')
 
 
 ############################

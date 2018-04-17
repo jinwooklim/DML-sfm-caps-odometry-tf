@@ -30,11 +30,21 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                             activation_fn=tf.nn.relu,
                             outputs_collections=end_points_collection):
             # cnv1 to cnv5b are shared between pose and explainability prediction
-            cnv1  = slim.conv2d(inputs,16,  [7, 7], stride=2, scope='cnv1')
-            cnv2  = slim.conv2d(cnv1, 32,  [5, 5], stride=2, scope='cnv2')
-            cnv3  = slim.conv2d(cnv2, 64,  [3, 3], stride=2, scope='cnv3')
-            cnv4  = slim.conv2d(cnv3, 128, [3, 3], stride=2, scope='cnv4')
-            cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
+            cnv1  = slim.conv2d(inputs, 32,  [7, 7], stride=2, scope='cnv1')
+            cnv2  = slim.conv2d(cnv1, 64,  [5, 5], stride=2, scope='cnv2')
+            cnv3  = slim.conv2d(cnv2, 128,  [3, 3], stride=2, scope='cnv3')
+            cnv4  = slim.conv2d(cnv3, 256, [3, 3], stride=2, scope='cnv4')
+            cnv5  = slim.conv2d(cnv4, 512, [3, 3], stride=2, scope='cnv5')
+            
+            
+            #cnv1  = slim.conv2d(inputs,16,  [7, 7], stride=2, scope='cnv1')
+            #cnv2  = slim.conv2d(cnv1, 32,  [5, 5], stride=2, scope='cnv2')
+            #cnv3  = slim.conv2d(cnv2, 64,  [3, 3], stride=2, scope='cnv3')
+            #cnv4  = slim.conv2d(cnv3, 128, [3, 3], stride=2, scope='cnv4')
+            #cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
+            #cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
+            #cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
+            
             # Pose specific layers
             with tf.variable_scope('pose'):
                 ''' 
@@ -138,20 +148,18 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                 #
                 # Version 3
                 #
-                cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
-                #cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
                 with tf.variable_scope('capsnet'):
                     if is_training == True:
                         X = caps_X
                         labels = caps_label
                         Y = tf.one_hot(labels, depth=cfg.num_of_class, axis=1, dtype=tf.float32)
-                        capsnet_model = capsnet.model(cnv6, num_source)
+                        capsnet_model = capsnet.model(cnv3, num_source)
                         v_length, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction)
                         margin_loss, reconstruction_loss, capsnet_total_loss = capsnet.loss(X, Y, v_length, decoded)
                         capsnet.summary(decoded, margin_loss, reconstruction_loss, capsnet_total_loss)
                     else:
-                        capsnet_model = capsnet.model(cnv6, num_source)
+                        capsnet_model = capsnet.model(cnv3, num_source)
                         _, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction) # (4, 24)
                     #decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
@@ -178,6 +186,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
             # Exp mask specific layers
             if do_exp:
                 with tf.variable_scope('exp'):
+                    '''
                     upcnv5 = slim.conv2d_transpose(cnv5, 256, [3, 3], stride=2, scope='upcnv5')
 
                     upcnv4 = slim.conv2d_transpose(upcnv5, 128, [3, 3], stride=2, scope='upcnv4')
@@ -195,6 +204,26 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                     upcnv1 = slim.conv2d_transpose(upcnv2, 16,  [7, 7], stride=2, scope='upcnv1')
                     mask1 = slim.conv2d(upcnv1, num_source * 2, [7, 7], stride=1, scope='mask1', 
                         normalizer_fn=None, activation_fn=None)
+                    '''
+                    upcnv5 = slim.conv2d_transpose(cnv5, 512, [3, 3], stride=2, scope='upcnv5')
+
+                    upcnv4 = slim.conv2d_transpose(upcnv5, 256, [3, 3], stride=2, scope='upcnv4')
+                    mask4 = slim.conv2d(upcnv4, num_source * 2, [3, 3], stride=1, scope='mask4', 
+                        normalizer_fn=None, activation_fn=None)
+
+                    upcnv3 = slim.conv2d_transpose(upcnv4, 128,  [3, 3], stride=2, scope='upcnv3')
+                    mask3 = slim.conv2d(upcnv3, num_source * 2, [3, 3], stride=1, scope='mask3', 
+                        normalizer_fn=None, activation_fn=None)
+                    
+                    upcnv2 = slim.conv2d_transpose(upcnv3, 64,  [5, 5], stride=2, scope='upcnv2')
+                    mask2 = slim.conv2d(upcnv2, num_source * 2, [5, 5], stride=1, scope='mask2', 
+                        normalizer_fn=None, activation_fn=None)
+
+                    upcnv1 = slim.conv2d_transpose(upcnv2, 32,  [7, 7], stride=2, scope='upcnv1')
+                    mask1 = slim.conv2d(upcnv1, num_source * 2, [7, 7], stride=1, scope='mask1', 
+                        normalizer_fn=None, activation_fn=None)
+ 
+
             else:
                 mask1 = None
                 mask2 = None

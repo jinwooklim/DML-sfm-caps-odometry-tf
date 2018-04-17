@@ -5,6 +5,7 @@ import random
 import numpy as np
 from SfMLearner import SfMLearner
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from config import cfg
 '''
 flags = tf.app.flags

@@ -118,7 +118,7 @@ class SfMLearner(object):
 
         with tf.name_scope("train_op"):
             train_vars = [var for var in tf.trainable_variables()]
-            optim = tf.train.AdamOptimizer(opt.learning_rate, opt.beta1)
+            optim = tf.train.AdamOptimizer(opt.learning_rate, opt.beta1, opt.beta2)
             # self.grads_and_vars = optim.compute_gradients(total_loss, 
             #                                               var_list=train_vars)
             # self.train_op = optim.apply_gradients(self.grads_and_vars)
