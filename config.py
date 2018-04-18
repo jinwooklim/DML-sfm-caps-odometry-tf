@@ -32,8 +32,8 @@ flags.DEFINE_integer("img_width", 416, "Image width")
 flags.DEFINE_integer("seq_length", 3, "Sequence length for each example")
 flags.DEFINE_integer("num_source", 2, "Must Be : num_source == seq_length - 1")
 flags.DEFINE_integer("num_scales", 4, "number of scales")
-flags.DEFINE_integer("max_steps", 150000, "Maximum number of training iterations")
-#flags.DEFINE_integer("max_steps", 20000, "Maximum number of training iterations")
+#flags.DEFINE_integer("max_steps", 150000, "Maximum number of training iterations")
+flags.DEFINE_integer("max_steps", 25000, "Maximum number of training iterations")
 #flags.DEFINE_integer("max_steps", 10000, "Maximum number of training iterations")
 flags.DEFINE_integer("summary_freq", 100, "Logging every log_freq iterations")
 flags.DEFINE_integer("save_latest_freq", 1000, \
@@ -58,7 +58,7 @@ flags.DEFINE_float('lambda_val', 0.5, 'down weight of the loss for absent digit 
 # for training
 #flags.DEFINE_integer('batch_size', 128, 'batch size')
 #flags.DEFINE_integer('epoch', 50, 'epoch')
-flags.DEFINE_integer('iter_routing', 3, 'number of iterations in routing algorithm')
+flags.DEFINE_integer('iter_routing', 8, 'number of iterations in routing algorithm')
 flags.DEFINE_boolean('mask_with_y', True, 'use the true label to mask out target capsule or not')
 #flags.DEFINE_boolean('mask_with_y', False, 'use the true label to mask out target capsule or not')
 
@@ -72,7 +72,7 @@ flags.DEFINE_float('regularization_scale', 0.416, 'regularization coefficient fo
 ############################
 #flags.DEFINE_string('dataset', 'mnist', 'The name of dataset [mnist, fashion-mnist')
 flags.DEFINE_boolean('is_training', True, 'train or predict phase')
-flags.DEFINE_integer('num_threads', 8, 'number of threads of enqueueing examples')
+flags.DEFINE_integer('num_threads', 10, 'number of threads of enqueueing examples')
 #flags.DEFINE_string('logdir', 'logdir', 'logs directory')
 #flags.DEFINE_integer('train_sum_freq', 100, 'the frequency of saving train summary(step)')
 #flags.DEFINE_integer('val_sum_freq', 500, 'the frequency of saving valuation summary(step)')

@@ -162,11 +162,11 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                         capsnet_model = capsnet.model(cnv3, num_source)
                         _, prediction = capsnet.predict(capsnet_model)
                         decoded = capsnet.decoder(capsnet_model, prediction) # (4, 24)
-                    #decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
-                    print("#3 decoded : ", np.shape(decoded))
-                    print("#4 decoded : ", np.shape(decoded)[-1])
-                    #pose_final = 0.01 * decoded
+                    decoded = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1)) # (4,4,6)
+                    pose_final = decoded
+                    pose_final = 0.01 * decoded
                     
+                    '''
                     with tf.name_scope('weights'):
                         #regression_w = tf.get_variable('regression_w', shape=[24, 24], dtype=tf.float32)
                         #regression_w = tf.get_variable('regression_w', shape=[12, 12], dtype=tf.float32)
@@ -181,6 +181,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                         decoded = tf.nn.xw_plus_b(decoded, regression_w, regression_b) # (4,4,6), (4,2,6)
                         pose_final = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1))   
                         print("pose_final : ", np.shape(pose_final))
+                    '''
                 #exit()
             
             # Exp mask specific layers
@@ -205,6 +206,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                     mask1 = slim.conv2d(upcnv1, num_source * 2, [7, 7], stride=1, scope='mask1', 
                         normalizer_fn=None, activation_fn=None)
                     '''
+                    
                     upcnv5 = slim.conv2d_transpose(cnv5, 512, [3, 3], stride=2, scope='upcnv5')
 
                     upcnv4 = slim.conv2d_transpose(upcnv5, 256, [3, 3], stride=2, scope='upcnv4')
