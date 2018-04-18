@@ -30,11 +30,11 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                             activation_fn=tf.nn.relu,
                             outputs_collections=end_points_collection):
             # cnv1 to cnv5b are shared between pose and explainability prediction
-            cnv1  = slim.conv2d(inputs, 32,  [7, 7], stride=2, scope='cnv1')
-            cnv2  = slim.conv2d(cnv1, 64,  [5, 5], stride=2, scope='cnv2')
-            cnv3  = slim.conv2d(cnv2, 128,  [3, 3], stride=2, scope='cnv3')
-            cnv4  = slim.conv2d(cnv3, 256, [3, 3], stride=2, scope='cnv4')
-            cnv5  = slim.conv2d(cnv4, 512, [3, 3], stride=2, scope='cnv5')
+            cnv1  = slim.conv2d(inputs, 16,  [7, 7], stride=2, scope='cnv1')
+            cnv2  = slim.conv2d(cnv1, 32,  [5, 5], stride=2, scope='cnv2')
+            cnv3  = slim.conv2d(cnv2, 64,  [3, 3], stride=2, scope='cnv3')
+            cnv4  = slim.conv2d(cnv3, 128, [3, 3], stride=2, scope='cnv4')
+            cnv5  = slim.conv2d(cnv4, 256, [3, 3], stride=2, scope='cnv5')
             
             
             #cnv1  = slim.conv2d(inputs,16,  [7, 7], stride=2, scope='cnv1')
@@ -47,22 +47,22 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
             
             # Pose specific layers
             with tf.variable_scope('pose'):
-                ''' 
+                
                 cnv6  = slim.conv2d(cnv5, 256, [3, 3], stride=2, scope='cnv6')
                 cnv7  = slim.conv2d(cnv6, 256, [3, 3], stride=2, scope='cnv7')
                 pose_pred = slim.conv2d(cnv7, 6*num_source, [1, 1], scope='pred', stride=1, normalizer_fn=None, activation_fn=None)
                 pose_avg = tf.reduce_mean(pose_pred, [1, 2])
-                print("pose_pred : ", pose_pred.get_shape())
-                print("pose_avg : ", pose_avg.get_shape())
+                #print("pose_pred : ", pose_pred.get_shape())
+                #print("pose_avg : ", pose_avg.get_shape())
                 
                 # Empirically we found that scaling by a small constant 
                 # facilitates training.
                 pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
-                print("pose_final : ", pose_final.get_shape())
+                #print("pose_final : ", pose_final.get_shape())
             
                 prediction = 5
-                exit()
-                '''
+                
+
                 #
                 # Version # 1
                 #
@@ -145,6 +145,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                     pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
                     print("pose_final : ", pose_final.get_shape())
                 '''
+                '''
                 #
                 # Version 3
                 #
@@ -166,22 +167,7 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                     pose_final = decoded
                     pose_final = 0.01 * decoded
                     
-                    '''
-                    with tf.name_scope('weights'):
-                        #regression_w = tf.get_variable('regression_w', shape=[24, 24], dtype=tf.float32)
-                        #regression_w = tf.get_variable('regression_w', shape=[12, 12], dtype=tf.float32)
-                        regression_w = tf.get_variable('regression_w', shape=[np.shape(decoded)[-1], np.shape(decoded)[-1]], dtype=tf.float32)
-
-                    with tf.name_scope('biases'):
-                        #regression_b = tf.get_variable('regression_b', shape=[24], dtype=tf.float32)
-                        #regression_b = tf.get_variable('regression_b', shape=[12], dtype=tf.float32)
-                        regression_b = tf.get_variable('regression_b', shape=[np.shape(decoded)[-1]], dtype=tf.float32)
-                    
-                    with tf.name_scope('Wx_plus_b'):
-                        decoded = tf.nn.xw_plus_b(decoded, regression_w, regression_b) # (4,4,6), (4,2,6)
-                        pose_final = tf.reshape(decoded, shape=(cfg.batch_size, num_source, -1))   
-                        print("pose_final : ", np.shape(pose_final))
-                    '''
+                '''
                 #exit()
             
             # Exp mask specific layers
@@ -207,21 +193,21 @@ def pose_exp_net(tgt_image, src_image_stack, capsnet, caps_X, caps_label, do_exp
                         normalizer_fn=None, activation_fn=None)
                     '''
                     
-                    upcnv5 = slim.conv2d_transpose(cnv5, 512, [3, 3], stride=2, scope='upcnv5')
+                    upcnv5 = slim.conv2d_transpose(cnv5, 256, [3, 3], stride=2, scope='upcnv5')
 
-                    upcnv4 = slim.conv2d_transpose(upcnv5, 256, [3, 3], stride=2, scope='upcnv4')
+                    upcnv4 = slim.conv2d_transpose(upcnv5, 128, [3, 3], stride=2, scope='upcnv4')
                     mask4 = slim.conv2d(upcnv4, num_source * 2, [3, 3], stride=1, scope='mask4', 
                         normalizer_fn=None, activation_fn=None)
 
-                    upcnv3 = slim.conv2d_transpose(upcnv4, 128,  [3, 3], stride=2, scope='upcnv3')
+                    upcnv3 = slim.conv2d_transpose(upcnv4, 64,  [3, 3], stride=2, scope='upcnv3')
                     mask3 = slim.conv2d(upcnv3, num_source * 2, [3, 3], stride=1, scope='mask3', 
                         normalizer_fn=None, activation_fn=None)
                     
-                    upcnv2 = slim.conv2d_transpose(upcnv3, 64,  [5, 5], stride=2, scope='upcnv2')
+                    upcnv2 = slim.conv2d_transpose(upcnv3, 32,  [5, 5], stride=2, scope='upcnv2')
                     mask2 = slim.conv2d(upcnv2, num_source * 2, [5, 5], stride=1, scope='mask2', 
                         normalizer_fn=None, activation_fn=None)
 
-                    upcnv1 = slim.conv2d_transpose(upcnv2, 32,  [7, 7], stride=2, scope='upcnv1')
+                    upcnv1 = slim.conv2d_transpose(upcnv2, 16,  [7, 7], stride=2, scope='upcnv1')
                     mask1 = slim.conv2d(upcnv1, num_source * 2, [7, 7], stride=1, scope='mask1', 
                         normalizer_fn=None, activation_fn=None)
  

@@ -114,7 +114,7 @@ class SfMLearner(object):
                 proj_error_stack_all.append(proj_error_stack)
                 if opt.explain_reg_weight > 0:
                     exp_mask_stack_all.append(exp_mask_stack)
-            total_loss = pixel_loss + smooth_loss + exp_loss + self.capsnet.capsnet_total_loss
+            total_loss = pixel_loss + smooth_loss + exp_loss #+ self.capsnet.capsnet_total_loss
 
         with tf.name_scope("train_op"):
             train_vars = [var for var in tf.trainable_variables()]

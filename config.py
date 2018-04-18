@@ -46,9 +46,9 @@ flags.DEFINE_boolean("continue_train", False, "Continue training from previous c
 flags.DEFINE_integer("test_seq", 9, "Sequence length for test")
 flags.DEFINE_string("output_dir", None, "Output directory")
 
-############################
-#    hyper parameters      #
-############################
+##################################
+#   Capsnet hyperparameters      #
+##################################
 
 # For separate margin loss
 flags.DEFINE_float('m_plus', 0.9, 'the parameter of m plus')
